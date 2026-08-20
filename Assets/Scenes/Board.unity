@@ -1113,8 +1113,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6093bec26edba9d408f9fa8e23a4491e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DeckManager
-  allCards:
-  - {fileID: 11400000, guid: a989c82db2701c64ca9dcc5fcf1e6f07, type: 2}
+  allCards: []
 --- !u!1 &1104565658
 GameObject:
   m_ObjectHideFlags: 0

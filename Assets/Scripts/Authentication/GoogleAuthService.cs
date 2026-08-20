@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
-// Đã xóa thư viện UGS thừa ở đây
 
 public class GoogleAuthService : MonoBehaviour
 {
@@ -22,11 +21,9 @@ public class GoogleAuthService : MonoBehaviour
     public event Action OnGoogleLoginFailed;
     public event Action OnGoogleLogout;
 
-    // Trạng thái đăng nhập
     public bool IsSignedIn { get; private set; } = false;
     public string DisplayName { get; private set; } = "";
     public string Email { get; private set; } = "";
-    // Đã xóa PlayerId vì đây là thông số của UGS
 
     private string codeVerifier;
 
@@ -71,10 +68,6 @@ public class GoogleAuthService : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Được gọi bởi AuthManager khi app khởi động.
-    /// Trả về true nếu auto-login thành công, false nếu thất bại.
-    /// </summary>
     public async Task<bool> TryAutoLogin()
     {
         // Chỉ cần kiểm tra id_token cũ trong PlayerPrefs
@@ -103,28 +96,18 @@ public class GoogleAuthService : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// Mở trình duyệt Google OAuth để người dùng đăng nhập.
-    /// Gắn hàm này vào Button UI.
-    /// </summary>
     public async void StartGoogleLogin()
     {
-        // Đã gỡ bỏ logic khởi tạo UGS ở đây
-
-        // 1. Tạo ngẫu nhiên 1 cổng Loopback trống (dynamic port)
         int port = GetRandomUnusedPort();
         string redirectUri = $"http://127.0.0.1:{port}/";
 
-        // 2. Tạo mã PKCE Verifier và Challenge
         codeVerifier = GenerateRandomString(64);
         string codeChallenge = GenerateCodeChallenge(codeVerifier);
 
-        // 3. Khởi chạy HttpListener để nhận callback từ trình duyệt
         using HttpListener listener = new HttpListener();
         listener.Prefixes.Add(redirectUri);
         listener.Start();
 
-        // 4. Tạo URL đăng nhập Google OAuth 2.0 (thêm access_type=offline để nhận refresh_token)
         string authUrl = $"https://accounts.google.com/o/oauth2/v2/auth?" +
                          $"client_id={Uri.EscapeDataString(clientId)}&" +
                          $"redirect_uri={Uri.EscapeDataString(redirectUri)}&" +
@@ -135,11 +118,9 @@ public class GoogleAuthService : MonoBehaviour
                          $"access_type=offline&" +
                          $"prompt=consent";
 
-        // Mở trình duyệt mặc định của hệ thống
         Application.OpenURL(authUrl);
         Debug.Log("[GoogleAuth] Đã mở trình duyệt để đăng nhập Google...");
 
-        // 5. Chờ phản hồi từ Google Callback
         HttpListenerContext context;
         try
         {
@@ -155,7 +136,6 @@ public class GoogleAuthService : MonoBehaviour
         string authCode = context.Request.QueryString.Get("code");
         string error = context.Request.QueryString.Get("error");
 
-        // Gửi thông báo thành công ra màn hình trình duyệt
         string responseHtml;
         if (!string.IsNullOrEmpty(error))
         {
@@ -192,7 +172,6 @@ public class GoogleAuthService : MonoBehaviour
             return;
         }
 
-        // 6. Đổi Auth Code lấy Tokens (id_token, access_token, refresh_token)
         await ExchangeCodeForTokenAsync(authCode, redirectUri);
     }
 
@@ -235,7 +214,6 @@ public class GoogleAuthService : MonoBehaviour
 
         Debug.Log("[GoogleAuth] Đổi token thành công!");
 
-        // Giải mã JWT id_token để lấy thông tin người dùng
         ExtractUserInfoFromIdToken(tokenData.id_token);
 
         // Lưu tokens vào PlayerPrefs
@@ -248,7 +226,6 @@ public class GoogleAuthService : MonoBehaviour
         PlayerPrefs.SetString(PREF_EMAIL, Email);
         PlayerPrefs.Save();
 
-        // Đăng nhập vào hệ thống thông qua AuthManager
         await AuthManager.Instance.ProcessGoogleLogin(tokenData.id_token);
     }
 
@@ -275,7 +252,6 @@ public class GoogleAuthService : MonoBehaviour
 
     private async Task<bool> TryRefreshAndSignIn(string refreshToken)
     {
-        // Gọi Google Token endpoint để lấy id_token mới từ refresh_token
         WWWForm form = new WWWForm();
         form.AddField("client_id", clientId);
         form.AddField("client_secret", clientSecret);
@@ -301,10 +277,8 @@ public class GoogleAuthService : MonoBehaviour
             return false;
         }
 
-        // Cập nhật thông tin user từ token mới
         ExtractUserInfoFromIdToken(tokenData.id_token);
 
-        // Lưu id_token mới
         PlayerPrefs.SetString(PREF_ID_TOKEN, tokenData.id_token);
         PlayerPrefs.SetString(PREF_DISPLAY_NAME, DisplayName);
         PlayerPrefs.SetString(PREF_EMAIL, Email);

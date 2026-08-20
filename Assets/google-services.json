@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "390227557742",
+    "project_id": "unity-kltn",
+    "storage_bucket": "unity-kltn.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:390227557742:android:a607999d3e5cc3819dd57f",
+        "android_client_info": {
+          "package_name": "com.kkiras.kltn"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "390227557742-uh9iaq8o2u6pd6qkvj2gppba77sjmds9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRhGkBglqCxG7k-V37xI1T3xrJXqA7H0g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "390227557742-uh9iaq8o2u6pd6qkvj2gppba77sjmds9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

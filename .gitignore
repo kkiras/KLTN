@@ -73,3 +73,10 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Secret configuration files
+/[Aa]ssets/[Ss]treamingAssets/google-auth-config.json
+/[Aa]ssets/[Ss]treamingAssets/google-auth-config.json.meta
+.env
+.env.*
+

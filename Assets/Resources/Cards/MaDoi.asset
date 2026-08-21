@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: MaDoi
   m_EditorClassIdentifier: Assembly-CSharp::CMCMProductions.Card
   cardName: "Ma \u0110\xF3i"
+  cardType: 02000000
   health: 2
   damage: 3
   energy: 0

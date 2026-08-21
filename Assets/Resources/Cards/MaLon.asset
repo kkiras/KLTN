@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: MaLon
   m_EditorClassIdentifier: Assembly-CSharp::CMCMProductions.Card
   cardName: Ma Lon
+  cardType: 03000000
   health: 1
   damage: 1
   energy: 1

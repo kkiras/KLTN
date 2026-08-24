@@ -18,7 +18,7 @@ public class DeckManagerEditor : Editor
             HandManager handManager = FindObjectOfType<HandManager>();
             if (handManager != null)
             {
-                deckManager.DrawCard(handManager);
+                deckManager.DrawCard();
             }
         }
     }

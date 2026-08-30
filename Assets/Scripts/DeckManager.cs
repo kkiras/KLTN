@@ -7,24 +7,42 @@ public class DeckManager : MonoBehaviour
 {
     public List<Card> allCards = new List<Card>();
     private int currentIndex = 0;
+    public int maxHandSize = 5;
+    private Transform handPosition;
+    private HandManager myHandManager;
 
     void Start()
     {
-        //Load all card assets from the Resources folder
         Card[] cards = Resources.LoadAll<Card>("Cards");
-
-        //Add the loaded cards to the allCards list
         allCards.AddRange(cards);
+
+        myHandManager = FindObjectOfType<HandManager>();
+
+        GameObject handPosObj = GameObject.Find("HandPosition");
+        if (handPosObj != null)
+        {
+            handPosition = handPosObj.transform;
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            DrawCard();
+        }
     }
 
-    public void DrawCard(HandManager handManager)
+    public void DrawCard()
     {
-        if (allCards.Count == 0)
+        if (allCards.Count == 0 || myHandManager == null)
             return;
+        if (handPosition != null && handPosition.childCount >= maxHandSize)
+        {
+            Debug.Log($"Tay đã đầy! Đang có {handPosition.childCount}/{maxHandSize} lá. Không thể rút thêm.");
+            return;
+        }
 
         Card nextCard = allCards[currentIndex];
-        handManager.AddCardToHand(nextCard);
-        currentIndex = (currentIndex + 1) % allCards.Count;
+        myHandManager.AddCardToHand(nextCard);
 
+        currentIndex = (currentIndex + 1) % allCards.Count;
     }
 }

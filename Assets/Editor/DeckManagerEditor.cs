@@ -13,13 +13,17 @@ public class DeckManagerEditor : Editor
         DrawDefaultInspector();
 
         DeckManager deckManager = (DeckManager)target;
-        if (GUILayout.Button("Draw Next Card"))
+
+        GUILayout.Space(10);
+
+        if (GUILayout.Button("Draw Next Card (Local)"))
         {
-            HandManager handManager = FindObjectOfType<HandManager>();
-            if (handManager != null)
-            {
-                deckManager.DrawCard();
-            }
+            deckManager.DrawCardLocal();
+        }
+
+        if (GUILayout.Button("Draw Next Card (Enemy)"))
+        {
+            deckManager.DrawCardEnemy();
         }
     }
 }

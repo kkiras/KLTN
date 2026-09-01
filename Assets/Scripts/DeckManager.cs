@@ -8,41 +8,46 @@ public class DeckManager : MonoBehaviour
     public List<Card> allCards = new List<Card>();
     private int currentIndex = 0;
     public int maxHandSize = 5;
-    private Transform handPosition;
-    private HandManager myHandManager;
+
+    public HandManager localHand;
+    public HandManager enemyHand;
 
     void Start()
     {
         Card[] cards = Resources.LoadAll<Card>("Cards");
         allCards.AddRange(cards);
 
-        myHandManager = FindObjectOfType<HandManager>();
-
-        GameObject handPosObj = GameObject.Find("HandPosition");
-        if (handPosObj != null)
+        for (int i = 0; i < 3; i++)
         {
-            handPosition = handPosObj.transform;
-        }
-
-        for (int i = 0; i < 2; i++)
-        {
-            DrawCard();
+            DrawCardLocal();
+            DrawCardEnemy();
         }
     }
 
-    public void DrawCard()
+    private void DrawCardToTarget(HandManager targetHand)
     {
-        if (allCards.Count == 0 || myHandManager == null)
+        if (allCards.Count == 0 || targetHand == null)
             return;
-        if (handPosition != null && handPosition.childCount >= maxHandSize)
+
+        if (targetHand.cardsInHand.Count >= maxHandSize)
         {
-            Debug.Log($"Tay đã đầy! Đang có {handPosition.childCount}/{maxHandSize} lá. Không thể rút thêm.");
+            Debug.Log($"Tay đã đầy! Đang có {targetHand.cardsInHand.Count}/{maxHandSize} lá. Không thể rút thêm.");
             return;
         }
 
         Card nextCard = allCards[currentIndex];
-        myHandManager.AddCardToHand(nextCard);
+        targetHand.AddCardToHand(nextCard);
 
         currentIndex = (currentIndex + 1) % allCards.Count;
+    }
+
+    public void DrawCardLocal()
+    {
+        DrawCardToTarget(localHand);
+    }
+
+    public void DrawCardEnemy()
+    {
+        DrawCardToTarget(enemyHand);
     }
 }

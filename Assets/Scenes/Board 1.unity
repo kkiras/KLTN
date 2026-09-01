@@ -1318,7 +1318,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 704558753}
-  - {fileID: 915999703}
+  - {fileID: 997152333}
   - {fileID: 896288062}
   - {fileID: 94098589}
   - {fileID: 1104565659}
@@ -1385,7 +1385,7 @@ MonoBehaviour:
   maxHandSize: 5
   localHand: {fileID: 1158011844}
   enemyHand: {fileID: 1131501536}
---- !u!1 &915999702
+--- !u!1 &997152332
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1393,9 +1393,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 915999703}
-  - component: {fileID: 915999705}
-  - component: {fileID: 915999704}
+  - component: {fileID: 997152333}
+  - component: {fileID: 997152335}
+  - component: {fileID: 997152334}
   m_Layer: 5
   m_Name: ImageActive
   m_TagString: Untagged
@@ -1403,13 +1403,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!224 &915999703
+--- !u!224 &997152333
 RectTransform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 915999702}
+  m_GameObject: {fileID: 997152332}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -1419,16 +1419,16 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -650, y: -290}
+  m_AnchoredPosition: {x: -650, y: 250}
   m_SizeDelta: {x: 150, y: 150}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &915999704
+--- !u!114 &997152334
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 915999702}
+  m_GameObject: {fileID: 997152332}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
@@ -1452,13 +1452,13 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!222 &915999705
+--- !u!222 &997152335
 CanvasRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 915999702}
+  m_GameObject: {fileID: 997152332}
   m_CullTransparentMesh: 1
 --- !u!1 &1053664993
 GameObject:
@@ -1493,7 +1493,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -150}
+  m_AnchoredPosition: {x: 0, y: -260}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1053664995
@@ -1510,12 +1510,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BoardManager
   isEnemyBoard: 0
   maxCardsOnBoard: 6
-  cardSpacing: 180
+  cardSpacing: 120
   lerpSpeed: 15
-  cardScaleOnBoard: {x: 1, y: 1, z: 1}
-  slotPrefab: {fileID: 7710830145957720162, guid: 0279e601b5fe67640b3a8fa3a28f79ab, type: 3}
-  cardsInSlots: []
-  slotPositions: []
+  cardsOnBoard: []
 --- !u!1 &1104565658
 GameObject:
   m_ObjectHideFlags: 0
@@ -1788,7 +1785,7 @@ MonoBehaviour:
   isCardBeingDragged: 0
   fanSpread: -7.5
   cardSpacing: 150
-  verticalSpacing: 30
+  verticalSpacing: 50
   cardsInHand: []
   loweredYPosition: -600
   raisedYPosition: -300
@@ -2189,7 +2186,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: 50}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1640069175
@@ -2563,10 +2560,7 @@ MonoBehaviour:
   maxCardsOnBoard: 6
   cardSpacing: 120
   lerpSpeed: 15
-  cardScaleOnBoard: {x: 1, y: 1, z: 1}
-  slotPrefab: {fileID: 0}
-  cardsInSlots: []
-  slotPositions: []
+  cardsOnBoard: []
 --- !u!1 &1940887044
 GameObject:
   m_ObjectHideFlags: 0

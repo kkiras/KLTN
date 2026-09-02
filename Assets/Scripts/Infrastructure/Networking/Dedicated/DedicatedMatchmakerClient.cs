@@ -1,0 +1,405 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using TMPro;
+using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
+using Unity.Services.Authentication;
+using Unity.Services.Matchmaker;
+using Unity.Services.Matchmaker.Models;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+public sealed class DedicatedMatchmakerClient : MonoBehaviour
+{
+    #region Constants
+
+    private const int PollDelayMilliseconds = 1500;
+
+    #endregion
+
+    #region Configuration
+
+    [Header("Matchmaker")]
+    [SerializeField] private string queueName = "boardgame-queue";
+
+    [Header("UI")]
+    [SerializeField] private Button matchmakingButton;
+    [SerializeField] private TMP_Text actionLabel;
+    [SerializeField] private TMP_Text findingMatchLabel;
+    [SerializeField] private TMP_Text timerLabel;
+    [SerializeField] private TMP_Text statusLabel;
+
+    #endregion
+
+    #region Runtime State
+
+    private CancellationTokenSource searchCancellation;
+    private string activeTicketId;
+    private float elapsedTime;
+    private bool isSearching;
+    private bool isConnecting;
+
+    #endregion
+
+    #region Unity Lifecycle
+
+    private void OnEnable()
+    {
+        if (matchmakingButton != null)
+        {
+            matchmakingButton.onClick.RemoveListener(ToggleMatchmaking);
+            matchmakingButton.onClick.AddListener(ToggleMatchmaking);
+        }
+
+        NetworkManager networkManager = NetworkManager.Singleton;
+
+        if (networkManager != null)
+        {
+            networkManager.OnClientConnectedCallback += OnClientConnected;
+            networkManager.OnClientDisconnectCallback += OnClientDisconnected;
+        }
+
+        ShowIdleState();
+    }
+
+    private void OnDisable()
+    {
+        if (matchmakingButton != null) { matchmakingButton.onClick.RemoveListener(ToggleMatchmaking); }
+
+        NetworkManager networkManager = NetworkManager.Singleton;
+
+        if (networkManager != null)
+        {
+            networkManager.OnClientConnectedCallback -= OnClientConnected;
+            networkManager.OnClientDisconnectCallback -= OnClientDisconnected;
+        }
+
+        searchCancellation?.Cancel();
+    }
+
+    private void Update()
+    {
+        if (!isSearching) { return; }
+
+        elapsedTime += Time.deltaTime;
+        int minutes = Mathf.FloorToInt(elapsedTime / 60f);
+        int seconds = Mathf.FloorToInt(elapsedTime % 60f);
+
+        if (timerLabel != null) { timerLabel.text = $"{minutes:00}:{seconds:00}"; }
+    }
+
+    #endregion
+
+    #region UI Events
+
+    public async void ToggleMatchmaking()
+    {
+        if (isSearching)
+        {
+            await CancelSearchAsync();
+            return;
+        }
+
+        await StartSearchAsync();
+    }
+
+    public async void BackToMainMenu()
+    {
+        await CancelSearchAsync();
+        NetworkManager networkManager = NetworkManager.Singleton;
+
+        if (networkManager != null && networkManager.IsListening) { networkManager.Shutdown(); }
+
+        SceneManager.LoadScene(SceneNames.MainMenu);
+    }
+
+    #endregion
+
+    #region Matchmaking
+
+    private async Task StartSearchAsync()
+    {
+        if (!AuthenticationService.Instance.IsSignedIn)
+        {
+            ShowResultState("Bạn chưa đăng nhập UGS.");
+            return;
+        }
+
+        if (NetworkManager.Singleton == null)
+        {
+            ShowResultState("Không tìm thấy NetworkManager.");
+            return;
+        }
+
+        if (NetworkManager.Singleton.IsListening)
+        {
+            ShowResultState("NetworkManager đang chạy.");
+            return;
+        }
+
+        searchCancellation = new CancellationTokenSource();
+        CancellationToken cancellationToken = searchCancellation.Token;
+        isSearching = true;
+        isConnecting = false;
+        elapsedTime = 0f;
+        SetActionLabel("Hủy tìm trận");
+        ShowSearchingState();
+
+        try
+        {
+            string publicIp = await PublicIpResolver.ResolveAsync(cancellationToken);
+
+            var customData = new Dictionary<string, object>
+            {
+                ["player_ip"] = publicIp,
+            };
+
+            var players = new List<Player>
+            {
+                new Player(
+                    AuthenticationService.Instance.PlayerId,
+                    customData),
+            };
+            ShowSearchingState("ĐANG TẠO TICKET:");
+
+            CreateTicketResponse ticket = await MatchmakerService.Instance.CreateTicketAsync(
+                players,
+                new CreateTicketOptions(queueName));
+            activeTicketId = ticket.Id;
+            Debug.Log($"Created matchmaker ticket: {activeTicketId}");
+            ShowSearchingState("ĐANG TÌM ĐỐI THỦ:");
+            IpPortAssignment assignment = await WaitForAssignmentAsync(cancellationToken);
+
+            // A matched ticket no longer needs client-side deletion.
+            activeTicketId = null;
+            ConnectToServer(assignment);
+        }
+        catch (OperationCanceledException)
+        {
+            ShowResultState("Đã hủy tìm trận.");
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            ShowResultState($"Tìm trận thất bại: {exception.Message}");
+        }
+        finally
+        {
+            isSearching = false;
+            searchCancellation?.Dispose();
+            searchCancellation = null;
+
+            if (!isConnecting)
+            {
+                SetActionLabel("Tìm trận");
+
+                if (matchmakingButton != null) { matchmakingButton.interactable = true; }
+            }
+        }
+    }
+
+    private async Task<IpPortAssignment> WaitForAssignmentAsync(CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            TicketStatusResponse ticketStatus = await MatchmakerService.Instance.GetTicketAsync(activeTicketId);
+
+            if (ticketStatus == null ||
+                ticketStatus.Type == typeof(NoneAssignment))
+            {
+                await Task.Delay(PollDelayMilliseconds, cancellationToken);
+                continue;
+            }
+
+            if (ticketStatus.Type != typeof(IpPortAssignment))
+            {
+                throw new InvalidOperationException($"Unexpected assignment type: {ticketStatus.Type}");
+            }
+
+            var assignment = (IpPortAssignment)ticketStatus.Value;
+            Debug.Log($"Assignment status: {assignment.Status}; message: {assignment.Message}");
+
+            switch (assignment.Status)
+            {
+                case IpPortAssignment.StatusOptions.Found:
+                    ValidateAssignment(assignment);
+                    return assignment;
+
+                case IpPortAssignment.StatusOptions.Failed:
+                    throw new InvalidOperationException(assignment.Message ?? "Matchmaker assignment failed.");
+
+                case IpPortAssignment.StatusOptions.Timeout:
+                    throw new TimeoutException(assignment.Message ?? "Matchmaker assignment timed out.");
+
+                case IpPortAssignment.StatusOptions.InProgress:
+                    ShowSearchingState("ĐANG KHỞI TẠO SERVER:");
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(assignment.Status),
+                        assignment.Status,
+                        "Unknown assignment status.");
+            }
+
+            await Task.Delay(PollDelayMilliseconds, cancellationToken);
+        }
+    }
+
+    private static void ValidateAssignment(IpPortAssignment assignment)
+    {
+        if (string.IsNullOrWhiteSpace(assignment.Ip)) { throw new InvalidOperationException("Assignment does not contain an IP address."); }
+
+        if (!assignment.Port.HasValue ||
+            assignment.Port.Value <= 0 ||
+            assignment.Port.Value > ushort.MaxValue)
+        {
+            throw new InvalidOperationException("Assignment contains an invalid port.");
+        }
+    }
+
+    private async Task CancelSearchAsync()
+    {
+        searchCancellation?.Cancel();
+        string ticketId = activeTicketId;
+        activeTicketId = null;
+
+        if (!string.IsNullOrWhiteSpace(ticketId))
+        {
+            try
+            {
+                await MatchmakerService.Instance.DeleteTicketAsync(ticketId);
+                Debug.Log($"Deleted matchmaker ticket: {ticketId}");
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"Could not delete ticket {ticketId}: " + exception.Message);
+            }
+        }
+
+        isSearching = false;
+        isConnecting = false;
+        SetActionLabel("Tìm trận");
+        ShowResultState("Đã hủy tìm trận.");
+
+        if (matchmakingButton != null) { matchmakingButton.interactable = true; }
+    }
+
+    #endregion
+
+    #region Network Connection
+
+    private void ConnectToServer(IpPortAssignment assignment)
+    {
+        NetworkManager networkManager = NetworkManager.Singleton;
+        UnityTransport transport = networkManager.GetComponent<UnityTransport>();
+
+        if (transport == null) { throw new InvalidOperationException("NetworkManager does not contain UnityTransport."); }
+
+        ushort port = checked((ushort)assignment.Port.Value);
+        Debug.Log($"Connecting to Edgegap endpoint {assignment.Ip}:{port}");
+        transport.SetConnectionData(assignment.Ip, port);
+        isConnecting = true;
+        SetActionLabel("Đang kết nối");
+        ShowResultState("Đã tìm thấy trận. Đang kết nối server...");
+
+        if (matchmakingButton != null) { matchmakingButton.interactable = false; }
+
+        if (!networkManager.StartClient())
+        {
+            isConnecting = false;
+            throw new InvalidOperationException("NetworkManager.StartClient returned false.");
+        }
+    }
+
+    private void OnClientConnected(ulong clientId)
+    {
+        NetworkManager networkManager = NetworkManager.Singleton;
+
+        if (networkManager == null ||
+            clientId != networkManager.LocalClientId)
+        {
+            return;
+        }
+
+        isConnecting = false;
+        SetActionLabel("Đã kết nối");
+        ShowResultState("Đã vào server. Đang chờ đối thủ...");
+
+        // Do not load GameScene here. The server synchronizes it for every client.
+    }
+
+    private void OnClientDisconnected(ulong clientId)
+    {
+        NetworkManager networkManager = NetworkManager.Singleton;
+
+        if (networkManager == null ||
+            clientId != networkManager.LocalClientId)
+        {
+            return;
+        }
+
+        isConnecting = false;
+        string reason = networkManager.DisconnectReason;
+        SetActionLabel("Tìm trận");
+
+        ShowResultState(string.IsNullOrWhiteSpace(reason)
+                ? "Đã mất kết nối với server."
+                : $"Mất kết nối: {reason}");
+
+        if (matchmakingButton != null) { matchmakingButton.interactable = true; }
+    }
+
+    #endregion
+
+    #region UI Rendering
+
+    private void ShowIdleState()
+    {
+        elapsedTime = 0f;
+        SetActionLabel("Tìm trận");
+        SetActive(findingMatchLabel, false);
+        SetActive(timerLabel, false);
+        SetActive(statusLabel, false);
+
+        if (timerLabel != null) { timerLabel.text = "00:00"; }
+
+        if (statusLabel != null) { statusLabel.text = string.Empty; }
+
+        if (matchmakingButton != null) { matchmakingButton.interactable = true; }
+    }
+
+    private void ShowSearchingState(string message = "ĐANG TÌM TRẬN:")
+    {
+        SetActive(findingMatchLabel, true);
+        SetActive(timerLabel, true);
+        SetActive(statusLabel, false);
+
+        if (findingMatchLabel != null) { findingMatchLabel.text = message; }
+    }
+
+    private void ShowResultState(string message)
+    {
+        SetActive(findingMatchLabel, false);
+        SetActive(timerLabel, false);
+        SetActive(statusLabel, true);
+
+        if (statusLabel != null) { statusLabel.text = message; }
+    }
+
+    private void SetActionLabel(string message)
+    {
+        if (actionLabel != null) { actionLabel.text = message; }
+    }
+
+    private static void SetActive(TMP_Text label, bool isActive)
+    {
+        if (label != null) { label.gameObject.SetActive(isActive); }
+    }
+
+    #endregion
+}

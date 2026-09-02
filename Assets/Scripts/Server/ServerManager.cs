@@ -1,35 +1,44 @@
-using Unity.Netcode;
-using UnityEngine;
 using System.Threading.Tasks;
+using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
+using UnityEngine;
 
 public class ServerManager : MonoBehaviour
 {
-    private int playerCount = 0;
-    private string SCENE_NAME = "Board";
+    #region Constants
 
-    void Start()
+    private const string SCENE_NAME = "Board";
+
+    #endregion
+
+    #region Runtime State
+
+    private int playerCount;
+
+    #endregion
+
+    #region Unity Lifecycle
+
+    private void Start()
     {
         bool isDedicatedServer = SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null;
         if (isDedicatedServer)
         {
             Debug.Log("===> ServerManager: Detected Dedicated Server (NullGfxDevice).");
-            
             var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-            if (transport != null)
-            {
-                transport.SetConnectionData("0.0.0.0", 7777, "0.0.0.0");
-            }
-            
+            if (transport != null) { transport.SetConnectionData("0.0.0.0", 7777, "0.0.0.0"); }
+
             NetworkManager.Singleton.OnClientConnectedCallback += OnPlayerJoined;
             NetworkManager.Singleton.OnClientDisconnectCallback += OnPlayerLeft;
-
             bool serverStarted = NetworkManager.Singleton.StartServer();
             Debug.Log($"===> ServerManager: StartServer() result = {serverStarted} (Port 7777)");
-
             _ = AutoCloseIfEmpty();
         }
     }
+
+    #endregion
+
+    #region Connection Events
 
     private void OnPlayerJoined(ulong clientId)
     {
@@ -53,6 +62,10 @@ public class ServerManager : MonoBehaviour
         }
     }
 
+    #endregion
+
+    #region Server Lifetime
+
     private async Task AutoCloseIfEmpty()
     {
         await Task.Delay(120000);
@@ -62,4 +75,6 @@ public class ServerManager : MonoBehaviour
             Application.Quit();
         }
     }
+
+    #endregion
 }

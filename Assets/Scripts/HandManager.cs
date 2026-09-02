@@ -1,7 +1,6 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using CMCMProductions;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class HandManager : MonoBehaviour
@@ -19,23 +18,43 @@ public class HandManager : MonoBehaviour
     public float verticalSpacing = 100f;
     public List<GameObject> cardsInHand = new List<GameObject>();
 
+    #endregion
+
+    #region Layout Configuration
+
     public float loweredYPosition = -600f;
     public float raisedYPosition = -300f;
     public float handLerpSpeed = 15f;
 
-    private float currentTargetY;
-    private float currentFanSpread = 0f;
-    private float targetFanSpread = 0f;
-    private float currentVerticalSpacing = 0f;
-    private float targetVerticalSpacing = 0f;
+    #endregion
 
+    #region Animation State
+
+    private float currentTargetY;
+    private float currentFanSpread;
+    private float targetFanSpread;
+    private float currentVerticalSpacing;
+    private float targetVerticalSpacing;
     private Canvas mainCanvas;
 
-    void Start()
+    #endregion
+
+    #region Unity Lifecycle
+
+    private void Start()
     {
         currentTargetY = loweredYPosition;
         mainCanvas = GetComponentInParent<Canvas>();
     }
+
+    private void Update()
+    {
+        HandleHandHoverEffect();
+    }
+
+    #endregion
+
+    #region Hand Contents
 
     public void AddCardToHand(Card cardData)
     {
@@ -108,8 +127,9 @@ public class HandManager : MonoBehaviour
         {
             Vector2 mousePos = Mouse.current.position.ReadValue();
             bool isHoveringAnyCard = false;
-
-            Camera uiCamera = (mainCanvas != null && mainCanvas.renderMode == RenderMode.ScreenSpaceOverlay) ? null : (mainCanvas != null ? mainCanvas.worldCamera : null);
+            Camera uiCamera = mainCanvas != null && mainCanvas.renderMode == RenderMode.ScreenSpaceOverlay
+                ? null
+                : mainCanvas != null ? mainCanvas.worldCamera : null;
             float liftAmount = Mathf.Abs(raisedYPosition - loweredYPosition);
 
             foreach (GameObject card in cardsInHand)
@@ -118,7 +138,11 @@ public class HandManager : MonoBehaviour
                 {
                     RectTransform cardRect = card.GetComponent<RectTransform>();
 
-                    if (RectTransformUtility.ScreenPointToLocalPointInRectangle(cardRect, mousePos, uiCamera, out Vector2 localPoint))
+                    if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                        cardRect,
+                        mousePos,
+                        uiCamera,
+                        out Vector2 localPoint))
                     {
                         Rect expandedRect = cardRect.rect;
                         expandedRect.yMin -= 1000f;
@@ -152,15 +176,20 @@ public class HandManager : MonoBehaviour
     private void LerpHandPositionAndSpread()
     {
         Vector3 targetPos = new Vector3(handTransform.localPosition.x, currentTargetY, handTransform.localPosition.z);
-        handTransform.localPosition = Vector3.Lerp(handTransform.localPosition, targetPos, Time.deltaTime * handLerpSpeed);
-
+        handTransform.localPosition = Vector3.Lerp(
+            handTransform.localPosition,
+            targetPos,
+            Time.deltaTime * handLerpSpeed);
         bool isSpreadChanging = Mathf.Abs(currentFanSpread - targetFanSpread) > 0.01f;
         bool isVerticalChanging = Mathf.Abs(currentVerticalSpacing - targetVerticalSpacing) > 0.01f;
 
         if (isSpreadChanging || isVerticalChanging)
         {
             currentFanSpread = Mathf.Lerp(currentFanSpread, targetFanSpread, Time.deltaTime * handLerpSpeed);
-            currentVerticalSpacing = Mathf.Lerp(currentVerticalSpacing, targetVerticalSpacing, Time.deltaTime * handLerpSpeed);
+            currentVerticalSpacing = Mathf.Lerp(
+                currentVerticalSpacing,
+                targetVerticalSpacing,
+                Time.deltaTime * handLerpSpeed);
             UpdateHandVisuals();
         }
         else
@@ -173,6 +202,10 @@ public class HandManager : MonoBehaviour
             }
         }
     }
+
+    #endregion
+
+    #region Layout
 
     public void UpdateHandVisuals()
     {
@@ -189,13 +222,10 @@ public class HandManager : MonoBehaviour
         {
             float rotationAngle = (currentFanSpread * (i - (cardCount - 1) / 2f));
             float horizontalOffset = (cardSpacing * (i - (cardCount - 1) / 2f));
-
             float normallizedPosition = (2f * i / (cardCount - 1) - 1f);
             float verticalOffset = currentVerticalSpacing * (1 - normallizedPosition * normallizedPosition);
-
             Vector3 newPos = new Vector3(horizontalOffset, verticalOffset, 0f);
             Quaternion newRot = Quaternion.Euler(0f, 0f, rotationAngle);
-
             ApplyTransformToCard(cardsInHand[i], newPos, newRot);
         }
     }
@@ -203,14 +233,13 @@ public class HandManager : MonoBehaviour
     private void ApplyTransformToCard(GameObject card, Vector3 pos, Quaternion rot)
     {
         CardMovement cm = card.GetComponent<CardMovement>();
-        if (cm != null)
-        {
-            cm.UpdateHomePosition(pos, rot);
-        }
+        if (cm != null) { cm.UpdateHomePosition(pos, rot); }
         else
         {
             card.transform.localPosition = pos;
             card.transform.localRotation = rot;
         }
     }
+
+    #endregion
 }

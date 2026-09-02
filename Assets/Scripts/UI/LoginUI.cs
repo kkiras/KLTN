@@ -1,37 +1,116 @@
-using System.Threading.Tasks;
-using Firebase.Auth;
+using System;
 using TMPro;
-using Unity.Services.Authentication;
 using UnityEngine;
 
-public class LoginUI : MonoBehaviour
+public sealed class LoginUI : MonoBehaviour
 {
-    [SerializeField] private TMP_InputField emailInput;
+    #region Serialized Fields
 
+    [Header("Inputs")]
+    [SerializeField] private TMP_InputField emailInput;
     [SerializeField] private TMP_InputField passwordInput;
 
+    [Header("UI State")]
+    [SerializeField] private AuthUIManager authUIManager;
+    [SerializeField] private AuthFeedbackView feedbackView;
+
+    #endregion
+
+    #region Unity Lifecycle
+
+    private void Awake()
+    {
+        emailInput.contentType = TMP_InputField.ContentType.EmailAddress;
+        passwordInput.contentType = TMP_InputField.ContentType.Password;
+    }
+
+    private void OnEnable()
+    {
+        feedbackView?.Clear();
+
+        if (passwordInput != null) { passwordInput.onSubmit.AddListener(OnPasswordSubmitted); }
+    }
+
+    private void OnDisable()
+    {
+        if (passwordInput != null) { passwordInput.onSubmit.RemoveListener(OnPasswordSubmitted); }
+    }
+
+    #endregion
+
+    #region UI Events
 
     public async void OnLoginButtonClicked()
     {
+        if (authUIManager == null ||
+            authUIManager.IsBusy)
+        {
+            return;
+        }
+
         string email = emailInput.text.Trim();
-
         string password = passwordInput.text;
+        feedbackView?.Clear();
 
-
-        if (string.IsNullOrEmpty(email))
+        if (!AuthInputValidator.TryValidateLogin(email, password, out string validationError))
         {
-            Debug.Log("Email không được để trống.");
+            feedbackView?.ShowError(validationError);
             return;
         }
 
-        if (string.IsNullOrEmpty(password))
+        if (!authUIManager.TryBeginOperation("Đang đăng nhập...")) { return; }
+
+        try
         {
-            Debug.Log("Password không được để trống.");
-            return;
+            AuthResultData result = await AuthManager.Instance.ProcessLogin(email, password);
+
+            // Login success causes AppFlowManager to load MainMenu.
+            if (this == null) { return; }
+
+            if (!result.Success) { feedbackView?.ShowError(GetSafeErrorMessage(result)); }
         }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
 
-        await AuthManager.Instance.ProcessLogin(email, password);
-
+            if (this != null) { feedbackView?.ShowError("Đăng nhập thất bại. Vui lòng thử lại."); }
+        }
+        finally
+        {
+            if (authUIManager != null) { authUIManager.EndOperation(); }
+        }
     }
 
+    #endregion
+
+    #region Registration Handoff
+
+    public void PrepareAfterRegistration(string email)
+    {
+        emailInput.text = email;
+        passwordInput.text = string.Empty;
+        feedbackView?.ShowSuccess("Đăng ký thành công. Bạn có thể đăng nhập ngay.");
+    }
+
+    #endregion
+
+    #region Input Events
+
+    private void OnPasswordSubmitted(string _)
+    {
+        OnLoginButtonClicked();
+    }
+
+    #endregion
+
+    #region Error Presentation
+
+    private static string GetSafeErrorMessage(AuthResultData result)
+    {
+        if (!string.IsNullOrWhiteSpace(result.ErrorMessage)) { return result.ErrorMessage; }
+
+        return "Đăng nhập thất bại. Vui lòng thử lại.";
+    }
+
+    #endregion
 }

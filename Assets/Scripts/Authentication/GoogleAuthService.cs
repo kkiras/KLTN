@@ -10,28 +10,48 @@ using UnityEngine.Networking;
 
 public class GoogleAuthService : MonoBehaviour
 {
+    #region PlayerPrefs Keys
+
+    private const string PREF_ID_TOKEN = "google_id_token";
+    private const string PREF_REFRESH_TOKEN = "google_refresh_token";
+    private const string PREF_DISPLAY_NAME = "google_display_name";
+    private const string PREF_EMAIL = "google_email";
+
+    #endregion
+
+    #region Singleton
+
     public static GoogleAuthService Instance { get; private set; }
+
+    #endregion
+
+    #region Serialized Configuration
 
     [Header("Google OAuth Config")]
     [SerializeField] private string clientId = "CLIENT_ID.apps.googleusercontent.com";
     [SerializeField] private string clientSecret = "CLIENT_SECRET";
     [SerializeField] private string scopes = "openid email profile";
 
+    #endregion
+
+    #region Events and Properties
+
     public event Action<string, string> OnGoogleLoginSuccess;
     public event Action OnGoogleLoginFailed;
     public event Action OnGoogleLogout;
-
     public bool IsSignedIn { get; private set; } = false;
     public string DisplayName { get; private set; } = "";
     public string Email { get; private set; } = "";
 
+    #endregion
+
+    #region Runtime State
+
     private string codeVerifier;
 
-    // PlayerPrefs keys
-    private const string PREF_ID_TOKEN = "google_id_token";
-    private const string PREF_REFRESH_TOKEN = "google_refresh_token";
-    private const string PREF_DISPLAY_NAME = "google_display_name";
-    private const string PREF_EMAIL = "google_email";
+    #endregion
+
+    #region Unity Lifecycle
 
     private void Awake()
     {
@@ -43,6 +63,10 @@ public class GoogleAuthService : MonoBehaviour
         Instance = this;
         LoadAuthConfig();
     }
+
+    #endregion
+
+    #region Configuration
 
     private void LoadAuthConfig()
     {
@@ -68,9 +92,12 @@ public class GoogleAuthService : MonoBehaviour
         }
     }
 
+    #endregion
+
+    #region Public Authentication Flow
+
     public async Task<bool> TryAutoLogin()
     {
-        // Chỉ cần kiểm tra id_token cũ trong PlayerPrefs
         string savedIdToken = PlayerPrefs.GetString(PREF_ID_TOKEN, "");
         if (!string.IsNullOrEmpty(savedIdToken))
         {
@@ -78,7 +105,6 @@ public class GoogleAuthService : MonoBehaviour
             bool success = await TrySignInWithIdToken(savedIdToken);
             if (success) return true;
 
-            // id_token hết hạn → thử dùng refresh_token
             Debug.Log("[GoogleAuth] id_token hết hạn, thử refresh_token...");
             string savedRefreshToken = PlayerPrefs.GetString(PREF_REFRESH_TOKEN, "");
             if (!string.IsNullOrEmpty(savedRefreshToken))
@@ -87,7 +113,6 @@ public class GoogleAuthService : MonoBehaviour
                 if (success) return true;
             }
 
-            // Cả 2 đều thất bại → xóa phiên cũ
             Debug.Log("[GoogleAuth] Không thể auto-login, cần đăng nhập lại.");
             ClearSavedTokens();
         }
@@ -100,10 +125,8 @@ public class GoogleAuthService : MonoBehaviour
     {
         int port = GetRandomUnusedPort();
         string redirectUri = $"http://127.0.0.1:{port}/";
-
         codeVerifier = GenerateRandomString(64);
         string codeChallenge = GenerateCodeChallenge(codeVerifier);
-
         using HttpListener listener = new HttpListener();
         listener.Prefixes.Add(redirectUri);
         listener.Start();
@@ -117,10 +140,8 @@ public class GoogleAuthService : MonoBehaviour
                          $"code_challenge_method=S256&" +
                          $"access_type=offline&" +
                          $"prompt=consent";
-
         Application.OpenURL(authUrl);
         Debug.Log("[GoogleAuth] Đã mở trình duyệt để đăng nhập Google...");
-
         HttpListenerContext context;
         try
         {
@@ -135,7 +156,6 @@ public class GoogleAuthService : MonoBehaviour
 
         string authCode = context.Request.QueryString.Get("code");
         string error = context.Request.QueryString.Get("error");
-
         string responseHtml;
         if (!string.IsNullOrEmpty(error))
         {
@@ -181,10 +201,11 @@ public class GoogleAuthService : MonoBehaviour
         IsSignedIn = false;
         DisplayName = "";
         Email = "";
-        
         Debug.Log("[GoogleAuth] Đã xóa dữ liệu phiên đăng nhập Google cục bộ.");
-        OnGoogleLogout?.Invoke(); 
+        OnGoogleLogout?.Invoke();
     }
+
+    #endregion
 
     #region Token Exchange & Sign In
 
@@ -197,7 +218,6 @@ public class GoogleAuthService : MonoBehaviour
         form.AddField("code_verifier", codeVerifier);
         form.AddField("grant_type", "authorization_code");
         form.AddField("redirect_uri", redirectUri);
-
         using UnityWebRequest request = UnityWebRequest.Post("https://oauth2.googleapis.com/token", form);
         var asyncOp = request.SendWebRequest();
         while (!asyncOp.isDone) await Task.Yield();
@@ -211,34 +231,37 @@ public class GoogleAuthService : MonoBehaviour
 
         string jsonResult = request.downloadHandler.text;
         GoogleTokenResponse tokenData = JsonUtility.FromJson<GoogleTokenResponse>(jsonResult);
-
         Debug.Log("[GoogleAuth] Đổi token thành công!");
-
         ExtractUserInfoFromIdToken(tokenData.id_token);
 
         // Lưu tokens vào PlayerPrefs
         PlayerPrefs.SetString(PREF_ID_TOKEN, tokenData.id_token);
-        if (!string.IsNullOrEmpty(tokenData.refresh_token))
-        {
-            PlayerPrefs.SetString(PREF_REFRESH_TOKEN, tokenData.refresh_token);
-        }
+        if (!string.IsNullOrEmpty(tokenData.refresh_token)) { PlayerPrefs.SetString(PREF_REFRESH_TOKEN, tokenData.refresh_token); }
         PlayerPrefs.SetString(PREF_DISPLAY_NAME, DisplayName);
         PlayerPrefs.SetString(PREF_EMAIL, Email);
         PlayerPrefs.Save();
+        bool success = await AuthManager.Instance.ProcessGoogleLogin(tokenData.id_token);
 
-        await AuthManager.Instance.ProcessGoogleLogin(tokenData.id_token);
+        if (success)
+        {
+            IsSignedIn = true;
+            OnGoogleLoginSuccess?.Invoke(DisplayName, Email);
+        }
+        else
+        {
+            OnGoogleLoginFailed?.Invoke();
+        }
     }
 
     private async Task<bool> TrySignInWithIdToken(string idToken)
     {
         bool success = await AuthManager.Instance.ProcessGoogleLogin(idToken);
-        
+
         if (success)
         {
             IsSignedIn = true;
             DisplayName = PlayerPrefs.GetString(PREF_DISPLAY_NAME, "Player");
             Email = PlayerPrefs.GetString(PREF_EMAIL, "");
-            
             Debug.Log($"[GoogleAuth] Auto-login thành công!");
             OnGoogleLoginSuccess?.Invoke(DisplayName, Email);
             return true;
@@ -257,7 +280,6 @@ public class GoogleAuthService : MonoBehaviour
         form.AddField("client_secret", clientSecret);
         form.AddField("refresh_token", refreshToken);
         form.AddField("grant_type", "refresh_token");
-
         using UnityWebRequest request = UnityWebRequest.Post("https://oauth2.googleapis.com/token", form);
         var asyncOp = request.SendWebRequest();
         while (!asyncOp.isDone) await Task.Yield();
@@ -278,20 +300,17 @@ public class GoogleAuthService : MonoBehaviour
         }
 
         ExtractUserInfoFromIdToken(tokenData.id_token);
-
         PlayerPrefs.SetString(PREF_ID_TOKEN, tokenData.id_token);
         PlayerPrefs.SetString(PREF_DISPLAY_NAME, DisplayName);
         PlayerPrefs.SetString(PREF_EMAIL, Email);
         PlayerPrefs.Save();
-
         Debug.Log("[GoogleAuth] Refresh token thành công, đang đăng nhập lại...");
-
         return await TrySignInWithIdToken(tokenData.id_token);
     }
 
     #endregion
 
-    #region JWT Decode (Giải mã id_token để lấy tên, email)
+    #region JWT Claims
 
     private void ExtractUserInfoFromIdToken(string idToken)
     {
@@ -314,11 +333,9 @@ public class GoogleAuthService : MonoBehaviour
 
             byte[] bytes = Convert.FromBase64String(base64);
             string json = Encoding.UTF8.GetString(bytes);
-
             GoogleIdTokenPayload data = JsonUtility.FromJson<GoogleIdTokenPayload>(json);
             DisplayName = !string.IsNullOrEmpty(data.name) ? data.name : data.email;
             Email = data.email ?? "";
-
             Debug.Log($"[GoogleAuth] Thông tin người dùng: Name={DisplayName}, Email={Email}");
         }
         catch (Exception ex)
@@ -335,7 +352,7 @@ public class GoogleAuthService : MonoBehaviour
         public string email;
         public string name;
         public string picture;
-        public string sub; 
+        public string sub;
     }
 
     #endregion

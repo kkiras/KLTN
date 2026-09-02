@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: MaDoi
   m_EditorClassIdentifier: Assembly-CSharp::CMCMProductions.Card
   cardName: "Ma \u0110\xF3i"
-  cardType: 02000000
+  artwork: {fileID: 21300000, guid: 2ab24eaf977922046a93ad01c653d48e, type: 3}
+  cardType: 
   health: 2
   damage: 3
   energy: 0

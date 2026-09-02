@@ -1,18 +1,22 @@
-using System.Collections;
 using System.Collections.Generic;
 using CMCMProductions;
 using UnityEngine;
 
 public class DeckManager : MonoBehaviour
 {
+    #region Configuration and Card Data
+
     public List<Card> allCards = new List<Card>();
-    private int currentIndex = 0;
     public int maxHandSize = 5;
 
     public HandManager localHand;
     public HandManager enemyHand;
 
-    void Start()
+    #endregion
+
+    #region Unity Lifecycle
+
+    private void Start()
     {
         Card[] cards = Resources.LoadAll<Card>("Cards");
         allCards.AddRange(cards);

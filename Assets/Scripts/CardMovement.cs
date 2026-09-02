@@ -26,15 +26,40 @@ public class CardMovement : MonoBehaviour, IDragHandler, IPointerDownHandler, IP
 
     public bool isEnemy = false;
 
+    #endregion
+
+    #region Component References
+
+    private RectTransform rectTransform;
+    private Canvas canvas;
+
+    #endregion
+
+    #region Pointer Origin
+
+    private Vector2 originalLocalPointerPosition;
+    private Vector3 originalPanelLocalPosition;
+    private Vector3 originalScale;
+    private Quaternion originalRotation;
+    private Vector3 originalPosition;
+
+    #endregion
+
+    #region Animation State
+
     private Vector3 targetPosition;
     private Quaternion targetRotation;
     private Vector3 targetScale;
+    private int currentState;
+    private bool isReturningToHand;
 
     private bool isReturningToHand = false;
     public HandManager myHandManager;
     public BoardManager playerBoard;
 
-    void Awake()
+    #region Unity Lifecycle
+
+    private void Awake()
     {
         rectTransform = GetComponent<RectTransform>();
         canvas = GetComponentInParent<Canvas>();
@@ -49,7 +74,7 @@ public class CardMovement : MonoBehaviour, IDragHandler, IPointerDownHandler, IP
         targetScale = originalScale;
     }
 
-    void Update()
+    private void Update()
     {
         switch (currentState)
         {
@@ -58,10 +83,7 @@ public class CardMovement : MonoBehaviour, IDragHandler, IPointerDownHandler, IP
                 break;
             case 2:
                 HandleDragState();
-                if (Mouse.current != null && !Mouse.current.leftButton.isPressed)
-                {
-                    TransitionToState0();
-                }
+                if (Mouse.current != null && !Mouse.current.leftButton.isPressed) { TransitionToState0(); }
                 break;
             case 3:
                 HandlePlayState();
@@ -74,9 +96,18 @@ public class CardMovement : MonoBehaviour, IDragHandler, IPointerDownHandler, IP
 
         if (currentState != 0 || isReturningToHand)
         {
-            rectTransform.localPosition = Vector3.Lerp(rectTransform.localPosition, targetPosition, Time.deltaTime * smoothSpeed);
-            rectTransform.localRotation = Quaternion.Lerp(rectTransform.localRotation, targetRotation, Time.deltaTime * smoothSpeed);
-            rectTransform.localScale = Vector3.Lerp(rectTransform.localScale, targetScale, Time.deltaTime * smoothSpeed);
+            rectTransform.localPosition = Vector3.Lerp(
+                rectTransform.localPosition,
+                targetPosition,
+                Time.deltaTime * smoothSpeed);
+            rectTransform.localRotation = Quaternion.Lerp(
+                rectTransform.localRotation,
+                targetRotation,
+                Time.deltaTime * smoothSpeed);
+            rectTransform.localScale = Vector3.Lerp(
+                rectTransform.localScale,
+                targetScale,
+                Time.deltaTime * smoothSpeed);
 
             if (currentState == 0 && isReturningToHand)
             {
@@ -113,14 +144,10 @@ public class CardMovement : MonoBehaviour, IDragHandler, IPointerDownHandler, IP
         if (isEnemy) return;
         if (currentState == 0)
         {
-            if (!isReturningToHand)
-            {
-                originalScale = rectTransform.localScale;
-            }
+            if (!isReturningToHand) { originalScale = rectTransform.localScale; }
 
             currentState = 1;
             isReturningToHand = false;
-
             rectTransform.SetAsLastSibling();
         }
     }
@@ -166,7 +193,11 @@ public class CardMovement : MonoBehaviour, IDragHandler, IPointerDownHandler, IP
         if (isEnemy) return;
         if (currentState == 2 || currentState == 3)
         {
-            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas.GetComponent<RectTransform>(), eventData.position, eventData.pressEventCamera, out Vector2 localPointerPosition))
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                canvas.GetComponent<RectTransform>(),
+                eventData.position,
+                eventData.pressEventCamera,
+                out Vector2 localPointerPosition))
             {
                 localPointerPosition /= canvas.scaleFactor;
                 Vector3 offsetToOriginal = localPointerPosition - originalLocalPointerPosition;
@@ -193,11 +224,14 @@ public class CardMovement : MonoBehaviour, IDragHandler, IPointerDownHandler, IP
         }
     }
 
+    #endregion
+
+    #region State Transitions
+
     private void HandleHoverState()
     {
         glowEffect.SetActive(true);
         targetScale = originalScale * selectScale;
-
         targetPosition = originalPosition + new Vector3(0, hoverHoverOffsetY, 0);
         targetRotation = Quaternion.identity;
     }
@@ -263,19 +297,34 @@ public class CardMovement : MonoBehaviour, IDragHandler, IPointerDownHandler, IP
         }
     }
 
+    private void TransitionToState0()
+    {
+        currentState = 0;
+        targetPosition = originalPosition;
+        targetRotation = originalRotation;
+        targetScale = originalScale;
+        glowEffect.SetActive(false);
+        playArrow.SetActive(false);
+        isReturningToHand = true;
+    }
+
+    #endregion
+
+    #region Layout Updates
+
     public void UpdateHomePosition(Vector3 newPos, Quaternion newRot)
     {
         originalPosition = newPos;
         originalRotation = newRot;
 
-
         if (currentState == 0 && !isReturningToHand)
         {
             rectTransform.localPosition = newPos;
             rectTransform.localRotation = newRot;
-
             targetPosition = newPos;
             targetRotation = newRot;
         }
     }
+
+    #endregion
 }

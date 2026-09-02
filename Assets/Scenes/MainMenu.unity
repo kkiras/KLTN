@@ -131,7 +131,7 @@ GameObject:
   - component: {fileID: 32448830}
   - component: {fileID: 32448829}
   m_Layer: 5
-  m_Name: Start
+  m_Name: HostClientButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -155,7 +155,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 436, y: -109}
-  m_SizeDelta: {x: 160, y: 30}
+  m_SizeDelta: {x: 240, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &32448829
 MonoBehaviour:
@@ -201,13 +201,13 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: 
-        m_MethodName: 
+      - m_Target: {fileID: 1745696296}
+        m_TargetAssemblyTypeName: MainMenuController, Assembly-CSharp
+        m_MethodName: OpenHostClientMenu
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
@@ -278,7 +278,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Quit
+  m_text: Logout
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: a0d2770dfd6b2d74ca642f830c6d8c98, type: 2}
   m_sharedMaterial: {fileID: 7427965642404358375, guid: a0d2770dfd6b2d74ca642f830c6d8c98, type: 2}
@@ -450,7 +450,7 @@ GameObject:
   - component: {fileID: 560895119}
   - component: {fileID: 560895118}
   m_Layer: 5
-  m_Name: Mutiplayer
+  m_Name: FindMatchButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -474,7 +474,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 432, y: -243.61}
-  m_SizeDelta: {x: 240.96, y: 32.89}
+  m_SizeDelta: {x: 240, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &560895118
 MonoBehaviour:
@@ -520,13 +520,13 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: 
-        m_MethodName: 
+      - m_Target: {fileID: 1745696296}
+        m_TargetAssemblyTypeName: MainMenuController, Assembly-CSharp
+        m_MethodName: OpenFindMatch
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
@@ -784,11 +784,11 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 209399905}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 486, y: 98}
-  m_SizeDelta: {x: 1111, y: 288.54}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 1, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: -36, y: -224}
+  m_SizeDelta: {x: 1111, y: 288.54004}
+  m_Pivot: {x: 1, y: 1}
 --- !u!114 &1239498808
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -884,7 +884,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Multiplayer
+  m_text: Find Random
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: a0d2770dfd6b2d74ca642f830c6d8c98, type: 2}
   m_sharedMaterial: {fileID: 7427965642404358375, guid: a0d2770dfd6b2d74ca642f830c6d8c98, type: 2}
@@ -1100,7 +1100,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Start
+  m_text: Host/Client
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: a0d2770dfd6b2d74ca642f830c6d8c98, type: 2}
   m_sharedMaterial: {fileID: 7427965642404358375, guid: a0d2770dfd6b2d74ca642f830c6d8c98, type: 2}
@@ -1180,6 +1180,50 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1590739703}
   m_CullTransparentMesh: 1
+--- !u!1 &1745696295
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1745696297}
+  - component: {fileID: 1745696296}
+  m_Layer: 0
+  m_Name: MainMenuController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1745696296
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1745696295}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c666daddb6ab0543b5bae4fe277b7c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainMenuController
+--- !u!4 &1745696297
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1745696295}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1917877822
 GameObject:
   m_ObjectHideFlags: 0
@@ -1295,7 +1339,7 @@ GameObject:
   - component: {fileID: 2015684753}
   - component: {fileID: 2015684752}
   m_Layer: 5
-  m_Name: Quit
+  m_Name: LogoutButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1319,7 +1363,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 436, y: -369}
-  m_SizeDelta: {x: 160, y: 30}
+  m_SizeDelta: {x: 240, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2015684752
 MonoBehaviour:
@@ -1365,13 +1409,13 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: 
-        m_MethodName: 
+      - m_Target: {fileID: 1745696296}
+        m_TargetAssemblyTypeName: MainMenuController, Assembly-CSharp
+        m_MethodName: Logout
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
@@ -1392,3 +1436,4 @@ SceneRoots:
   - {fileID: 917074380}
   - {fileID: 1917877826}
   - {fileID: 1519023198}
+  - {fileID: 1745696297}

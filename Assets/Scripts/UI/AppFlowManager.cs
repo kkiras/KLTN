@@ -1,22 +1,25 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class AppFlowManager : MonoBehaviour
+public sealed class AppFlowManager : MonoBehaviour
 {
-    private const string SCENE_MATCH_NAME = "SceneMatch";
-    private const string SCENE_LOGIN_NAME = "LoginScene";
+    #region Singleton
+
     public static AppFlowManager Instance { get; private set; }
 
-    private void Start()
+    #endregion
+
+    #region Static Lifecycle
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
     {
-        if (SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Null)
-        {
-            if (AuthManager.Instance != null)
-            {
-                AuthManager.Instance.TryAutoLogin();
-            }
-        }
+        Instance = null;
     }
+
+    #endregion
+
+    #region Unity Lifecycle
 
     private void Awake()
     {
@@ -25,36 +28,57 @@ public class AppFlowManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-        
+
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null)
+        // Defensive removal prevents duplicate subscriptions.
+        AuthManager.OnLoginSuccess -= LoadMainMenu;
+        AuthManager.OnLogoutSuccess -= LoadLogin;
+        AuthManager.OnLoginSuccess += LoadMainMenu;
+        AuthManager.OnLogoutSuccess += LoadLogin;
+        Debug.Log("AppFlowManager subscribed to authentication events.");
+    }
+
+    private void Start()
+    {
+        if (AuthManager.Instance != null) { AuthManager.Instance.TryAutoLogin(); }
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance != this) { return; }
+
+        AuthManager.OnLoginSuccess -= LoadMainMenu;
+        AuthManager.OnLogoutSuccess -= LoadLogin;
+        Instance = null;
+    }
+
+    #endregion
+
+    #region Scene Navigation
+
+    private void LoadMainMenu()
+    {
+        LoadScene(SceneNames.MainMenu);
+    }
+
+    private void LoadLogin()
+    {
+        LoadScene(SceneNames.Login);
+    }
+
+    private static void LoadScene(string sceneName)
+    {
+        if (!Application.CanStreamedLevelBeLoaded(sceneName))
         {
-            // Dedicated Server start ở SceneMatch
-            SceneManager.LoadScene(SCENE_MATCH_NAME);
+            Debug.LogError($"Scene '{sceneName}' is unavailable. " + "Check Build Profiles scene list.");
             return;
         }
-    }
-    private void OnEnable()
-    {
-        AuthManager.OnLoginSuccess += LoadFindMatchScene;
-        AuthManager.OnLogoutSuccess += LoadLoginScene;
+
+        Debug.Log($"Loading scene: {sceneName}");
+        SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
     }
 
-    private void OnDisable()
-    {
-        AuthManager.OnLoginSuccess -= LoadFindMatchScene;
-        AuthManager.OnLogoutSuccess -= LoadLoginScene;
-    }
-
-    private void LoadFindMatchScene()
-    {
-        SceneManager.LoadScene(SCENE_MATCH_NAME); 
-    }
-
-    private void LoadLoginScene()
-    {
-        SceneManager.LoadScene(SCENE_LOGIN_NAME);
-    }
+    #endregion
 }

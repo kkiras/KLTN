@@ -4,15 +4,20 @@ using UnityEngine;
 
 public class UGSInitializer : MonoBehaviour
 {
+    #region Unity Lifecycle
+
     private async void Awake()
     {
         await Initialize();
     }
 
+    #endregion
+
+    #region Initialization
+
     public static async Task Initialize()
     {
-        if (UnityServices.State == ServicesInitializationState.Initialized)
-            return;
+        if (UnityServices.State == ServicesInitializationState.Initialized) { return; }
 
         try
         {
@@ -24,4 +29,6 @@ public class UGSInitializer : MonoBehaviour
             Debug.LogError($"Unity Gaming Services initialization failed: {e}");
         }
     }
+
+    #endregion
 }

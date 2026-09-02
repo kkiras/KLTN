@@ -1,19 +1,25 @@
-using UnityEngine;
-using Unity.Services.Matchmaker;
-using Unity.Services.Matchmaker.Models;
-using TMPro;
-using System.Threading;
 using System;
-using System.Threading.Tasks;
 using System.Collections.Generic;
-using Unity.Services.Authentication;
+using System.Threading;
+using System.Threading.Tasks;
+using TMPro;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
+using Unity.Services.Authentication;
+using Unity.Services.Matchmaker;
+using Unity.Services.Matchmaker.Models;
+using UnityEngine;
 
 public class Matchmaker : MonoBehaviour
 {
+    #region Configuration
+
     // private string POOL_NAME = "abc";
     private string QUEUE_NAME = "boardgame-queue";
+
+    #endregion
+
+    #region UI References
 
     [Header("UI References")]
     public TMP_Text textButtonMatchmaking;
@@ -21,50 +27,60 @@ public class Matchmaker : MonoBehaviour
     public TMP_Text textStatus;
     public TMP_Text textStatusFinding;
 
-    private bool isMatchmaking = false;
-    private float matchmakeTimer = 0f;
+    #endregion
+
+    #region Runtime State
+
+    private bool isMatchmaking;
+    private float matchmakeTimer;
     private CancellationTokenSource cts;
 
-    void Start()
+    #endregion
+
+    #region Unity Lifecycle
+
+    private void Start()
     {
-        // Nếu là Dedicated Server thì không chạy logic Client Matchmaker
-        if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
-        
+        // Matchmaking UI is client-only and never runs on a dedicated server.
+        if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) { return; }
+
         Application.runInBackground = true;
         textTimer.gameObject.SetActive(false);
         textStatus.gameObject.SetActive(false);
         textStatusFinding.gameObject.SetActive(false);
     }
 
-    void Update()
+    private void Update()
     {
         if (isMatchmaking)
         {
             ShowTimerText();
-
             matchmakeTimer += Time.deltaTime;
 
-            //Format time
+            // Format elapsed matchmaking time.
             int minutes = Mathf.FloorToInt(matchmakeTimer / 60F);
             int seconds = Mathf.FloorToInt(matchmakeTimer - minutes * 60);
-            textTimer.text = string.Format("{0:00}:{1:00}", minutes, seconds);
-
-
+            textTimer.text = $"{minutes:00}:{seconds:00}";
         }
     }
 
+    #endregion
+
+    #region UI Events
+
     public async void OnFindMatchButtonClicked()
     {
-        if (isMatchmaking)
-        {
-            CancelMatchMaking();
-        }
+        if (isMatchmaking) { CancelMatchMaking(); }
         else
         {
 
             await FindMatch();
         }
     }
+
+    #endregion
+
+    #region Matchmaking Lifecycle
 
     private void CancelMatchMaking()
     {
@@ -85,18 +101,21 @@ public class Matchmaker : MonoBehaviour
 
     public async Task FindMatch()
     {
-        Debug.Log("Đang tìm trận..");     
-
+        Debug.Log("Đang tìm trận..");
         isMatchmaking = true;
         matchmakeTimer = 0f;
         textButtonMatchmaking.text = "Hủy bỏ";
-        
-        cts = new CancellationTokenSource(); 
+        cts = new CancellationTokenSource();
 
         try
         {
-            var players = new List<Player> { new Player(AuthenticationService.Instance.PlayerId) };
-            var ticket = await MatchmakerService.Instance.CreateTicketAsync(players, new CreateTicketOptions(QUEUE_NAME));
+            var players = new List<Player>
+            {
+                new Player(AuthenticationService.Instance.PlayerId)
+            };
+            var ticket = await MatchmakerService.Instance.CreateTicketAsync(
+                players,
+                new CreateTicketOptions(QUEUE_NAME));
             Debug.Log($"Đã tạo Ticket thành công: {ticket.Id}");
 
             while (!cts.Token.IsCancellationRequested)
@@ -106,15 +125,16 @@ public class Matchmaker : MonoBehaviour
                 if (ticketStatus.Type == typeof(IpPortAssignment))
                 {
                     var assignment = (IpPortAssignment)ticketStatus.Value;
-                    
                     isMatchmaking = false;
                     ShowStatusText();
                     textStatus.text = "Đang kết nối...";
                     Debug.Log($"TÌM THẤY SERVER EDGEGAP! IP: {assignment.Ip}, Port: {assignment.Port}");
-                    
+
                     if (NetworkManager.Singleton == null)
                     {
-                        Debug.LogError("KHÔNG TÌM THẤY NetworkManager! Bạn cần tạo GameObject NetworkManager trong Scene FindMatch (nhớ tick DontDestroyOnLoad) kèm UnityTransport.");
+                        Debug.LogError(
+                            "KHÔNG TÌM THẤY NetworkManager! Bạn cần tạo GameObject NetworkManager " +
+                            "trong Scene FindMatch (nhớ tick DontDestroyOnLoad) kèm UnityTransport.");
                         textStatus.text = "Error: No NetManager";
                         ResetUI();
                         break;
@@ -131,7 +151,6 @@ public class Matchmaker : MonoBehaviour
 
                     transport.SetConnectionData(assignment.Ip, (ushort)assignment.Port);
                     NetworkManager.Singleton.StartClient();
-                    
                     textButtonMatchmaking.text = "Đã kết nối";
                     textStatus.text = "Chờ đối thủ...";
                     break;
@@ -139,29 +158,30 @@ public class Matchmaker : MonoBehaviour
                 else if (ticketStatus.Type == typeof(MultiplayAssignment))
                 {
                     var assignment = (MultiplayAssignment)ticketStatus.Value;
-                    
-                    if (assignment.Status == MultiplayAssignment.StatusOptions.Timeout || assignment.Status == MultiplayAssignment.StatusOptions.Failed)
+
+                    if (assignment.Status == MultiplayAssignment.StatusOptions.Timeout ||
+                        assignment.Status == MultiplayAssignment.StatusOptions.Failed)
                     {
                         Debug.LogError($"Lỗi Matchmaker hoặc hết thời gian! Status: {assignment.Status}");
                         textStatus.text = "Không tìm thấy đối thủ.";
                         ResetUI();
                         break;
                     }
-                    // Continue loop if InProgress
+                    // Continue polling while the assignment remains in progress.
                 }
-                
-                await Task.Delay(1500, cts.Token); 
+
+                await Task.Delay(1500, cts.Token);
             }
         }
-        catch (System.OperationCanceledException)
+        catch (OperationCanceledException)
         {
             Debug.Log("Đã huỷ tìm trận.");
-            textStatus.text = "Hủy tìm trận..."; 
-            await Task.Delay(1000); 
+            textStatus.text = "Hủy tìm trận...";
+            await Task.Delay(1000);
             textStatus.text = "";
             ResetUI();
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
             Debug.LogError($"Lỗi trong quá trình tìm trận: {ex.Message}");
             textStatus.text = "No match found";
@@ -174,8 +194,12 @@ public class Matchmaker : MonoBehaviour
                 cts.Dispose();
                 cts = null;
             }
-        }          
+        }
     }
+
+    #endregion
+
+    #region UI Rendering
 
     private void ShowTimerText()
     {
@@ -190,4 +214,6 @@ public class Matchmaker : MonoBehaviour
         textStatus.gameObject.SetActive(true);
         textStatusFinding.gameObject.SetActive(false);
     }
+
+    #endregion
 }

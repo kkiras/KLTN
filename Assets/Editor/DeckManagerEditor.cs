@@ -1,13 +1,12 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
 #if UNITY_EDITOR
 using UnityEditor;
-[CustomEditor(typeof(DeckManager))]
+using UnityEngine;
 
-public class DeckManagerEditor : Editor
+[CustomEditor(typeof(DeckManager))]
+public sealed class DeckManagerEditor : Editor
 {
+    #region Inspector
+
     public override void OnInspectorGUI()
     {
         DrawDefaultInspector();
@@ -15,12 +14,11 @@ public class DeckManagerEditor : Editor
         DeckManager deckManager = (DeckManager)target;
         if (GUILayout.Button("Draw Next Card"))
         {
-            HandManager handManager = FindObjectOfType<HandManager>();
-            if (handManager != null)
-            {
-                deckManager.DrawCard();
-            }
+            HandManager handManager = FindAnyObjectByType<HandManager>();
+            if (handManager != null) { deckManager.DrawCard(); }
         }
     }
+
+    #endregion
 }
 #endif

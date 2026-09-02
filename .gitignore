@@ -77,6 +77,8 @@ crashlytics-build.properties
 # Secret configuration files
 /[Aa]ssets/[Ss]treamingAssets/google-auth-config.json
 /[Aa]ssets/[Ss]treamingAssets/google-auth-config.json.meta
+/[Aa]ssets/[Ss]treamingAssets/firebase-auth-config.json
+/[Aa]ssets/[Ss]treamingAssets/firebase-auth-config.json.meta
 .env
 .env.*
 

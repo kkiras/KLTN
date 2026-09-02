@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: MaDa
   m_EditorClassIdentifier: Assembly-CSharp::CMCMProductions.Card
   cardName: Ma Da
-  cardType: 01000000
+  artwork: {fileID: 21300000, guid: 0f6f37771a3ac8549bb913088c0cf301, type: 3}
+  cardType: 
   health: 1
   damage: 3
   energy: 2

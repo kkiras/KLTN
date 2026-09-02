@@ -1,0 +1,20 @@
+root = true
+
+[Assets/**/*.cs]
+dotnet_style_namespace_match_folder = false
+charset = utf-8
+end_of_line = crlf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+
+# Keep short guards and accessors compact when they are intentionally written
+# on one line. Longer blocks continue to use Allman braces.
+csharp_preserve_single_line_blocks = true
+csharp_preserve_single_line_statements = true
+csharp_new_line_before_open_brace = all
+csharp_new_line_between_query_expression_clauses = true
+
+dotnet_separate_import_directive_groups = false
+dotnet_sort_system_directives_first = true
+csharp_using_directive_placement = outside_namespace

@@ -1,5 +1,7 @@
 ﻿<Solution>
   <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="KLTN.Game.Domain.csproj" />
+  <Project Path="KLTN.Game.Domain.Tests.csproj" />
   <Project Path="Firebase.App.Internal.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
 </Solution>

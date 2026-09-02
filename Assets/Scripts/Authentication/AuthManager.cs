@@ -1,26 +1,54 @@
 using System;
 using System.Threading.Tasks;
-using Firebase.Auth;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
 using UnityEngine;
 
 public class AuthManager : MonoBehaviour
 {
-    public static AuthManager Instance { get; private set; }
-
-    private IAuthService authService;
-    public IAuthService Auth => authService;
+    #region Constants
 
     private const string PREF_LOGIN_METHOD = "login_method";
     private const string PREF_FIREBASE_REFRESH_TOKEN = "firebase_refresh_token";
 
+    #endregion
+
+    #region Singleton
+
+    public static AuthManager Instance { get; private set; }
+
+    #endregion
+
+    #region Events
+
     public static event Action OnLoginSuccess;
     public static event Action OnLogoutSuccess;
 
+    #endregion
+
+    #region Dependencies
+
+    private IAuthService authService;
+
+    #endregion
+
+    #region Static Lifecycle
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        Instance = null;
+        OnLoginSuccess = null;
+        OnLogoutSuccess = null;
+    }
+
+    #endregion
+
+    #region Unity Lifecycle
+
     private void Awake()
     {
-        if (Instance != null)
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
             return;
@@ -31,7 +59,16 @@ public class AuthManager : MonoBehaviour
         InitializeAuth();
     }
 
-	private void InitializeAuth()
+    private void OnDestroy()
+    {
+        if (Instance == this) { Instance = null; }
+    }
+
+    #endregion
+
+    #region Service Selection
+
+    private void InitializeAuth()
     {
 #if UNITY_STANDALONE
         authService = new FirebaseRestAuthService();
@@ -47,43 +84,79 @@ public class AuthManager : MonoBehaviour
 
 #endif
     }
-	public async Task ProcessLogin(string email, string password)
+
+    #endregion
+
+    #region Authentication Commands
+
+    public async Task<AuthResultData> ProcessRegister(string email, string password)
     {
-        // AuthUIManager.Instance.ShowLoading(true); 
-
-		try
+        try
         {
-            // Đăng nhập Firebase
-            AuthResultData result = await authService.LoginAsync(email, password);
+            AuthResultData result = await authService.RegisterAsync(email, password);
 
-            if (!result.Success || string.IsNullOrEmpty(result.IdToken))
+            if (!result.Success)
             {
-                Debug.LogError($"Firebase Login failed: {result.ErrorMessage}");
-                return;
+                Debug.LogWarning($"Firebase registration failed: {result.ErrorCode}");
+                return result;
             }
 
-            Debug.Log($"Firebase Login success. User ID: {result.UserId}");
+            // Firebase sign-up also creates an authenticated Firebase session.
+            // The current flow requires the player to log in explicitly afterward.
+            authService.Logout();
 
-            // Link sang UGS bằng Firebase Token
+            return new AuthResultData
+            {
+                Success = true,
+                UserId = result.UserId,
+                Email = result.Email,
+            };
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            authService?.Logout();
+            return AuthResultData.Failure("REGISTER_EXCEPTION", "Đã xảy ra lỗi khi đăng ký. Vui lòng thử lại.");
+        }
+    }
+
+    public async Task<AuthResultData> ProcessLogin(string email, string password)
+    {
+        try
+        {
+            AuthResultData result = await authService.LoginAsync(email, password);
+
+            if (!result.Success ||
+                string.IsNullOrEmpty(result.IdToken))
+            {
+                Debug.LogWarning($"Firebase login failed: {result.ErrorCode}");
+                return result;
+            }
+
             bool ugsSuccess = await LoginFirebaseToUGS(result.IdToken);
-            if (!ugsSuccess) return;
 
-            // 3. Mọi thứ hoàn tất -> Kích hoạt Event chuyển Scene
-            Debug.Log("Xác thực toàn bộ thành công! Kích hoạt event chuyển scene.");
+            if (!ugsSuccess)
+            {
+                authService.Logout();
+                return AuthResultData.Failure("UGS_LOGIN_FAILED", "Không thể kết nối dịch vụ game. Vui lòng thử lại.");
+            }
 
             PlayerPrefs.SetString(PREF_LOGIN_METHOD, "email");
-            PlayerPrefs.SetString(PREF_FIREBASE_REFRESH_TOKEN, result.RefreshToken);
-            PlayerPrefs.Save();
 
+            if (!string.IsNullOrEmpty(result.RefreshToken)) { PlayerPrefs.SetString(PREF_FIREBASE_REFRESH_TOKEN, result.RefreshToken); }
+
+            PlayerPrefs.Save();
+            Debug.Log($"Authentication completed for user {result.UserId}.");
+            int listenerCount = OnLoginSuccess?.GetInvocationList().Length ?? 0;
+            Debug.Log($"OnLoginSuccess listener count: {listenerCount}");
             OnLoginSuccess?.Invoke();
+            return result;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Debug.LogError($"Lỗi hệ thống khi đăng nhập: {ex.Message}");
-        }
-        finally
-        {
-            // AuthUIManager.Instance.ShowLoading(false);
+            Debug.LogException(exception);
+            authService?.Logout();
+            return AuthResultData.Failure("LOGIN_EXCEPTION", "Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.");
         }
     }
 
@@ -92,8 +165,8 @@ public class AuthManager : MonoBehaviour
         try
         {
             Debug.Log("Bắt đầu đăng nhập Google qua Firebase...");
-            
-            // Đăng nhập Firebase bằng Google Token
+
+            // Exchange the Google token for a Firebase identity.
             AuthResultData result = await authService.LoginWithGoogleAsync(googleIdToken);
 
             if (!result.Success || string.IsNullOrEmpty(result.IdToken))
@@ -104,17 +177,13 @@ public class AuthManager : MonoBehaviour
 
             Debug.Log($"Firebase Google Login success. User ID: {result.UserId}");
 
-            // Link sang UGS bằng Firebase Token
+            // Exchange the Firebase identity for a UGS identity.
             bool ugsSuccess = await LoginFirebaseToUGS(result.IdToken);
             if (!ugsSuccess) return false;
-
             Debug.Log("Xác thực Google -> Firebase -> UGS thành công!");
-
             PlayerPrefs.SetString(PREF_LOGIN_METHOD, "google");
             PlayerPrefs.Save();
-
             OnLoginSuccess?.Invoke();
-
             return true;
         }
         catch (Exception ex)
@@ -124,6 +193,10 @@ public class AuthManager : MonoBehaviour
         }
     }
 
+    #endregion
+
+    #region Automatic Login
+
     public async void TryAutoLogin()
     {
         string loginMethod = PlayerPrefs.GetString(PREF_LOGIN_METHOD, "");
@@ -131,7 +204,7 @@ public class AuthManager : MonoBehaviour
         if (loginMethod == "google" && GoogleAuthService.Instance != null)
         {
             Debug.Log("Bạn đang được đăng nhập lại với tài khoản Google...");
-            await GoogleAuthService.Instance.TryAutoLogin(); 
+            await GoogleAuthService.Instance.TryAutoLogin();
         }
         else if (loginMethod == "email")
         {
@@ -163,7 +236,6 @@ public class AuthManager : MonoBehaviour
 
             bool ugsSuccess = await LoginFirebaseToUGS(result.IdToken);
             if (!ugsSuccess) return;
-
             Debug.Log("Auto-Login Email & UGS thành công!");
             OnLoginSuccess?.Invoke();
         }
@@ -173,9 +245,13 @@ public class AuthManager : MonoBehaviour
         }
     }
 
-	private async Task<bool> LoginFirebaseToUGS(string firebaseIdToken)
+    #endregion
+
+    #region UGS Identity Bridge
+
+    private async Task<bool> LoginFirebaseToUGS(string firebaseIdToken)
     {
-		if (string.IsNullOrEmpty(firebaseIdToken))
+        if (string.IsNullOrEmpty(firebaseIdToken))
         {
             Debug.LogError("Firebase ID Token is null or empty.");
             return false;
@@ -185,7 +261,7 @@ public class AuthManager : MonoBehaviour
         {
             await UGSInitializer.Initialize();
 
-			if (UnityServices.State != ServicesInitializationState.Initialized)
+            if (UnityServices.State != ServicesInitializationState.Initialized)
             {
                 Debug.LogError("UGS initialization failed.");
                 return false;
@@ -201,27 +277,28 @@ public class AuthManager : MonoBehaviour
             return false;
         }
     }
+
+    #endregion
+
+    #region Logout
+
     public void SignOut()
     {
         PlayerPrefs.DeleteKey(PREF_LOGIN_METHOD);
         PlayerPrefs.DeleteKey(PREF_FIREBASE_REFRESH_TOKEN);
         PlayerPrefs.Save();
 
-        //Đăng xuất Firebase (Email/Pass và Google)
+        // Sign out of Firebase for both email/password and Google flows.
         authService?.Logout();
 
-        //Đăng xuất Unity Gaming Services
-        if (AuthenticationService.Instance.IsSignedIn)
-        {
-            AuthenticationService.Instance.SignOut();
-        }
+        // Sign out of Unity Gaming Services.
+        if (AuthenticationService.Instance.IsSignedIn) { AuthenticationService.Instance.SignOut(); }
 
-        if (GoogleAuthService.Instance != null)
-        {
-            GoogleAuthService.Instance.ClearSession();
-        }
+        if (GoogleAuthService.Instance != null) { GoogleAuthService.Instance.ClearSession(); }
 
         Debug.Log("Đã đăng xuất toàn bộ hệ thống thành công.");
-        OnLogoutSuccess?.Invoke(); 
+        OnLogoutSuccess?.Invoke();
     }
+
+    #endregion
 }

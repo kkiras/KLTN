@@ -5,11 +5,14 @@ using UnityEngine.InputSystem;
 
 public class HandManager : MonoBehaviour
 {
-    #region References and Card Views
 
     public DeckManager deckManager;
     public GameObject cardPrefab;
     public Transform handTransform;
+
+    public bool isEnemyHand = false;
+    public bool isCardBeingDragged = false;
+
     public float fanSpread = -7.5f;
     public float cardSpacing = 150f;
     public float verticalSpacing = 100f;
@@ -20,7 +23,7 @@ public class HandManager : MonoBehaviour
     #region Layout Configuration
 
     public float loweredYPosition = -600f;
-    public float raisedYPosition = -380f;
+    public float raisedYPosition = -300f;
     public float handLerpSpeed = 15f;
 
     #endregion
@@ -58,12 +61,63 @@ public class HandManager : MonoBehaviour
         GameObject newCard = Instantiate(cardPrefab, handTransform.position, Quaternion.identity, handTransform);
         cardsInHand.Add(newCard);
         newCard.GetComponent<CardDisplay>().cardData = cardData;
+
+        CardMovement cm = newCard.GetComponent<CardMovement>();
+        if (cm != null)
+        {
+            cm.isEnemy = this.isEnemyHand;
+            cm.myHandManager = this;
+        }
+
         UpdateHandVisuals();
     }
 
-    #endregion
+    public void RemoveCardFromHand(GameObject card)
+    {
+        if (cardsInHand.Contains(card))
+        {
+            cardsInHand.Remove(card);
+            UpdateHandVisuals();
+        }
+    }
 
-    #region Hover Animation
+    void Update()
+    {
+        if (isEnemyHand)
+        {
+            HandleEnemyHand();
+        }
+        else
+        {
+            if (isCardBeingDragged)
+            {
+                currentTargetY = loweredYPosition;
+                targetFanSpread = 0f;
+                targetVerticalSpacing = 0f;
+
+                LerpHandPositionAndSpread();
+            }
+            else
+            {
+                HandleHandHoverEffect();
+            }
+        }
+    }
+
+    private void HandleEnemyHand()
+    {
+        currentTargetY = raisedYPosition;
+        targetFanSpread = fanSpread;
+        targetVerticalSpacing = verticalSpacing;
+
+        Vector3 targetPos = new Vector3(handTransform.localPosition.x, currentTargetY, handTransform.localPosition.z);
+        handTransform.localPosition = Vector3.Lerp(handTransform.localPosition, targetPos, Time.deltaTime * handLerpSpeed);
+
+        currentFanSpread = Mathf.Lerp(currentFanSpread, targetFanSpread, Time.deltaTime * handLerpSpeed);
+        currentVerticalSpacing = Mathf.Lerp(currentVerticalSpacing, targetVerticalSpacing, Time.deltaTime * handLerpSpeed);
+
+        UpdateHandVisuals();
+    }
 
     private void HandleHandHoverEffect()
     {
@@ -91,7 +145,8 @@ public class HandManager : MonoBehaviour
                         out Vector2 localPoint))
                     {
                         Rect expandedRect = cardRect.rect;
-                        expandedRect.yMin -= liftAmount;
+                        expandedRect.yMin -= 1000f;
+                        expandedRect.yMax += liftAmount;
 
                         if (expandedRect.Contains(localPoint))
                         {
@@ -116,6 +171,10 @@ public class HandManager : MonoBehaviour
             }
         }
 
+        LerpHandPositionAndSpread();
+    }
+    private void LerpHandPositionAndSpread()
+    {
         Vector3 targetPos = new Vector3(handTransform.localPosition.x, currentTargetY, handTransform.localPosition.z);
         handTransform.localPosition = Vector3.Lerp(
             handTransform.localPosition,

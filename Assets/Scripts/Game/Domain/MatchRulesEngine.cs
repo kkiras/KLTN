@@ -63,8 +63,12 @@ namespace KLTN.Game.Domain
             if (!player.TrySpendMana(definition.Cost)) { return CommandResult.Reject(CommandRejectionReason.InsufficientMana); }
 
             player.MoveHandCardToBoard(card, boardSlotIndex);
-            CompleteAction(state, $"{actor} đã đánh {definition.DisplayName} vào vị trí {boardSlotIndex + 1}.");
-            return CommandResult.Success();
+
+            RoundResolution resolution = CompleteAction(
+                state,
+                $"{actor} đã đánh {definition.DisplayName} vào vị trí {boardSlotIndex + 1}.");
+
+            return CommandResult.Success(resolution);
         }
 
         #endregion
@@ -77,8 +81,11 @@ namespace KLTN.Game.Domain
 
             if (!actorValidation.Accepted) { return actorValidation; }
 
-            CompleteAction(state, $"{actor} đã bỏ lượt.");
-            return CommandResult.Success();
+            RoundResolution resolution = CompleteAction(
+                state,
+                $"{actor} đã bỏ lượt.");
+
+            return CommandResult.Success(resolution);
         }
 
         private static CommandResult ValidateActor(MatchState state, SeatId actor)
@@ -92,7 +99,9 @@ namespace KLTN.Game.Domain
             return CommandResult.Success();
         }
 
-        private void CompleteAction(MatchState state, string actionDescription)
+        private RoundResolution CompleteAction(
+            MatchState state,
+            string actionDescription)
         {
             state.LastEvent = actionDescription;
             state.ActionsCompletedInRound++;
@@ -100,16 +109,16 @@ namespace KLTN.Game.Domain
             if (state.ActionsCompletedInRound < 2)
             {
                 state.ActiveSeat = state.ActiveSeat.Opponent();
-                return;
+                return null;
             }
 
-            ResolveBoard(state);
+            RoundResolution resolution = ResolveBoard(state);
             UpdateOutcome(state);
 
             if (state.IsFinished)
             {
                 state.LastEvent += " Trận đấu đã kết thúc.";
-                return;
+                return resolution;
             }
 
             int completedRound = state.RoundNumber;
@@ -125,39 +134,72 @@ namespace KLTN.Game.Domain
             state.RoundNumber = completedRound + 1;
             state.ActionsCompletedInRound = 0;
             state.ActiveSeat = state.FirstSeat;
+
+            return resolution;
         }
 
         #endregion
 
         #region Board Resolution
 
-        private void ResolveBoard(MatchState state)
+        private RoundResolution ResolveBoard(MatchState state)
         {
-            for (int slot = 0;
-                 slot < MatchState.BoardSlotCount;
-                 slot++)
+            var steps = new List<CombatStep>();
+
+            for (int slot = 0; slot < MatchState.BoardSlotCount; slot++)
             {
                 CardInstance hostCard = state.Host.FindBoardCard(slot);
                 CardInstance guestCard = state.Guest.FindBoardCard(slot);
+
+                if (hostCard == null && guestCard == null) { continue; }
+
+                int hostCardHealthBefore = hostCard?.CurrentHealth ?? 0;
+                int guestCardHealthBefore = guestCard?.CurrentHealth ?? 0;
+                int hostNexusHealthBefore = state.Host.NexusHealth;
+                int guestNexusHealthBefore = state.Guest.NexusHealth;
 
                 if (hostCard != null && guestCard != null)
                 {
                     int hostDamage = DamageOf(hostCard);
                     int guestDamage = DamageOf(guestCard);
 
-                    // Both units deal damage simultaneously.
+                    // Damage trong cùng một slot luôn xảy ra đồng thời.
                     hostCard.ApplyDamage(guestDamage);
                     guestCard.ApplyDamage(hostDamage);
-                    continue;
+                }
+                else if (hostCard != null)
+                {
+                    state.Guest.ApplyNexusDamage(DamageOf(hostCard));
+                }
+                else
+                {
+                    state.Host.ApplyNexusDamage(DamageOf(guestCard));
                 }
 
-                if (hostCard != null) { state.Guest.ApplyNexusDamage(DamageOf(hostCard)); }
+                CardCombatResolution hostResolution = BuildCardResolution(
+                    hostCard,
+                    SeatId.Host,
+                    hostCardHealthBefore);
 
-                if (guestCard != null) { state.Host.ApplyNexusDamage(DamageOf(guestCard)); }
+                CardCombatResolution guestResolution = BuildCardResolution(
+                    guestCard,
+                    SeatId.Guest,
+                    guestCardHealthBefore);
+
+                steps.Add(new CombatStep(
+                    slot,
+                    hostResolution,
+                    guestResolution,
+                    hostNexusHealthBefore,
+                    state.Host.NexusHealth,
+                    guestNexusHealthBefore,
+                    state.Guest.NexusHealth));
             }
 
             state.Host.MoveDeadBoardCardsToGraveyard();
             state.Guest.MoveDeadBoardCardsToGraveyard();
+
+            return new RoundResolution(state.RoundNumber, steps);
         }
 
         #endregion
@@ -185,6 +227,20 @@ namespace KLTN.Game.Domain
             {
                 state.Outcome = MatchOutcome.HostWon;
             }
+        }
+
+        private static CardCombatResolution BuildCardResolution(
+            CardInstance card,
+            SeatId seat,
+            int healthBefore)
+        {
+            if (card == null) { return null; }
+
+            return new CardCombatResolution(
+                seat,
+                card.InstanceId,
+                healthBefore,
+                card.CurrentHealth);
         }
 
         #endregion

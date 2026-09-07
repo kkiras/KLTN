@@ -83,4 +83,65 @@ namespace KLTN.Game.Networking
 
         #endregion
     }
+
+    [Serializable]
+    public sealed class ResolvedCardDto
+    {
+        #region Card Identity and State
+
+        public int seat;
+        public CardViewDto cardBefore;
+        public int healthAfter;
+
+        #endregion
+    }
+
+    [Serializable]
+    public sealed class CombatStepDto
+    {
+        #region Slot
+
+        public int slotIndex;
+
+        #endregion
+
+        #region Cards
+
+        public ResolvedCardDto hostCard;
+        public ResolvedCardDto guestCard;
+
+        #endregion
+
+        #region Nexus Health
+
+        public int hostNexusHealthBefore;
+        public int hostNexusHealthAfter;
+        public int guestNexusHealthBefore;
+        public int guestNexusHealthAfter;
+
+        #endregion
+    }
+
+    [Serializable]
+    public sealed class RoundResolutionDto
+    {
+        #region Round Resolution
+
+        public int roundNumber;
+        public CombatStepDto[] steps;
+
+        #endregion
+    }
+
+    [Serializable]
+    public sealed class MatchUpdateDto
+    {
+        #region Authoritative Update
+
+        public MatchSnapshotDto snapshot;
+        public bool hasResolution;
+        public RoundResolutionDto resolution;
+
+        #endregion
+    }
 }

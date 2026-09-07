@@ -755,6 +755,7 @@ GameObject:
   - component: {fileID: 4624737739966826755}
   - component: {fileID: 3241616671404702880}
   - component: {fileID: 478487931769356090}
+  - component: {fileID: 6268654889630839125}
   m_Layer: 5
   m_Name: NetworkCardView
   m_TagString: Untagged
@@ -899,3 +900,15 @@ MonoBehaviour:
   designSize: {x: 240, y: 320}
   handSize: {x: 150, y: 200}
   boardSize: {x: 240, y: 320}
+--- !u!114 &6268654889630839125
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8477672883293305891}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a13837faf6bcb64b9b83a2961ca7235, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KLTN.Game.Presentation.CombatCardAnimator

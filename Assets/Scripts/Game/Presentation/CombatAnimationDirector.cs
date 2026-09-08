@@ -26,6 +26,10 @@ namespace KLTN.Game.Presentation
         [Min(0f)]
         [SerializeField] private float collisionGap = 12f;
 
+        [Header("Damage Feedback")]
+        [SerializeField] private DamageFeedbackView selfNexusFeedback;
+        [SerializeField] private DamageFeedbackView opponentNexusFeedback;
+
         [Header("Timing")]
         [Min(0f)]
         [SerializeField] private float retreatDuration = 0.18f;
@@ -47,11 +51,14 @@ namespace KLTN.Game.Presentation
         #region Runtime State
 
         private readonly HashSet<CombatCardAnimator> preparedAnimators = new HashSet<CombatCardAnimator>();
+        private readonly HashSet<DamageFeedbackView> activeFeedbackViews = new HashSet<DamageFeedbackView>();
+        private readonly HashSet<CardDeathFeedback> activeDeathFeedbacks = new HashSet<CardDeathFeedback>();
 
         private MatchUpdateInbox inbox;
         private MatchClientProjection projection;
         private Coroutine processingCoroutine;
         private MatchUpdateDto currentUpdate;
+        private int activeDamageFeedbackCount;
 
         #endregion
 
@@ -74,7 +81,10 @@ namespace KLTN.Game.Presentation
             }
 
             StopAllCoroutines();
+            activeDamageFeedbackCount = 0;
             RestorePreparedCards();
+            ResetFeedbackViews();
+            ResetDeathFeedbacks();
 
             if (currentUpdate?.snapshot != null)
             {
@@ -150,7 +160,12 @@ namespace KLTN.Game.Presentation
                 }
             }
 
+            yield return WaitForDamageFeedback();
+
             RestorePreparedCards();
+            ResetFeedbackViews();
+
+            yield return AnimateDeadCards(resolution);
         }
 
         #endregion
@@ -159,41 +174,75 @@ namespace KLTN.Game.Presentation
 
         private IEnumerator AnimateStep(CombatStepDto step, int viewerSeat)
         {
-            bool hasHost = TryGetAnimator(step.hostCard, out CombatCardAnimator hostAnimator);
+            bool hasHostCard = HasResolvedCard(step.hostCard);
+            bool hasGuestCard = HasResolvedCard(step.guestCard);
 
-            bool hasGuest = TryGetAnimator(step.guestCard, out CombatCardAnimator guestAnimator);
+            CombatCardAnimator hostAnimator = null;
+            CombatCardAnimator guestAnimator = null;
 
-            if (!hasHost && !hasGuest) { yield break; }
+            bool hasHostVisual = hasHostCard &&
+                                 TryGetAnimator(step.hostCard, out hostAnimator);
 
-            if (hasHost)
-            {
-                PrepareAnimator(step.hostCard, viewerSeat, hostAnimator);
-            }
+            bool hasGuestVisual = hasGuestCard &&
+                                  TryGetAnimator(step.guestCard, out guestAnimator);
 
-            if (hasGuest)
-            {
-                PrepareAnimator(step.guestCard, viewerSeat, guestAnimator);
-            }
-
-            yield return AnimateRetreat(
-                hasHost ? hostAnimator : null,
-                hasGuest ? guestAnimator : null
+            Debug.Log(
+                $"Combat step: Slot={step.slotIndex}, " +
+                $"HostCard={CardIdOrNone(step.hostCard)}, " +
+                $"GuestCard={CardIdOrNone(step.guestCard)}, " +
+                $"HostVisual={hasHostVisual}, GuestVisual={hasGuestVisual}."
             );
 
-            if (hasHost && hasGuest)
+            if (hasHostCard && hasGuestCard)
             {
-                yield return AnimateUnitCollision(hostAnimator, guestAnimator);
+                if (!hasHostVisual || !hasGuestVisual)
+                {
+                    Debug.LogWarning(
+                        $"Không tìm thấy đủ visual cho combat card-vs-card. " +
+                        $"Slot={step.slotIndex}, HostVisual={hasHostVisual}, " +
+                        $"GuestVisual={hasGuestVisual}."
+                    );
+
+                    yield break;
+                }
+
+                PrepareAnimator(step.hostCard, viewerSeat, hostAnimator);
+                PrepareAnimator(step.guestCard, viewerSeat, guestAnimator);
+
+                yield return AnimateRetreat(hostAnimator, guestAnimator);
+
+                yield return AnimateUnitCollision(step, hostAnimator, guestAnimator);
 
                 preparedAnimators.Remove(hostAnimator);
                 preparedAnimators.Remove(guestAnimator);
                 yield break;
             }
 
-            CombatCardAnimator attackerAnimator = hasHost
-                ? hostAnimator
-                : guestAnimator;
+            CombatCardAnimator attackerAnimator =
+                hasHostCard ? hostAnimator : guestAnimator;
 
-            yield return AnimateDirectAttack(attackerAnimator);
+            bool hasAttackerVisual =
+                hasHostCard ? hasHostVisual : hasGuestVisual;
+
+            if (!hasAttackerVisual || attackerAnimator == null)
+            {
+                Debug.LogWarning(
+                    $"Không tìm thấy attacker visual cho direct attack. " +
+                    $"Slot={step.slotIndex}."
+                );
+
+                yield break;
+            }
+
+            ResolvedCardDto attackerCard = hasHostCard
+                ? step.hostCard
+                : step.guestCard;
+
+            PrepareAnimator(attackerCard, viewerSeat, attackerAnimator);
+
+            yield return AnimateRetreat(attackerAnimator, null);
+
+            yield return AnimateDirectAttack(step, viewerSeat, attackerAnimator);
             preparedAnimators.Remove(attackerAnimator);
         }
 
@@ -219,28 +268,100 @@ namespace KLTN.Game.Presentation
             }
         }
 
-        private IEnumerator AnimateUnitCollision(CombatCardAnimator hostAnimator, CombatCardAnimator guestAnimator)
+        private IEnumerator AnimateUnitCollision(
+            CombatStepDto step,
+            CombatCardAnimator hostAnimator,
+            CombatCardAnimator guestAnimator)
         {
-            CalculateCollisionTargets(hostAnimator, guestAnimator, out Vector3 hostTarget, out Vector3 guestTarget);
+            DamageFeedbackView hostFeedback =
+                hostAnimator.GetComponent<DamageFeedbackView>();
+
+            DamageFeedbackView guestFeedback =
+                guestAnimator.GetComponent<DamageFeedbackView>();
+
+            BeginFeedback(hostFeedback);
+            BeginFeedback(guestFeedback);
+
+            CalculateCollisionTargets(
+                hostAnimator,
+                guestAnimator,
+                out Vector3 hostTarget,
+                out Vector3 guestTarget);
 
             yield return RunTogether(
-                hostAnimator.Strike(hostTarget, strikeDuration),
-                guestAnimator.Strike(guestTarget, strikeDuration)
-            );
+                hostAnimator.Strike(
+                    hostTarget,
+                    strikeDuration),
 
-            yield return WaitUnscaled(impactHoldDuration);
+                guestAnimator.Strike(
+                    guestTarget,
+                    strikeDuration));
+
+            StartDamageFeedback(
+                PlayCardDamage(
+                    hostFeedback,
+                    step.hostCard));
+
+            StartDamageFeedback(
+                PlayCardDamage(
+                    guestFeedback,
+                    step.guestCard));
+
+            yield return WaitUnscaled(
+                impactHoldDuration);
 
             yield return RunTogether(
                 hostAnimator.ReturnHome(returnDuration),
-                guestAnimator.ReturnHome(returnDuration)
-            );
+                guestAnimator.ReturnHome(returnDuration));
         }
-
-        private IEnumerator AnimateDirectAttack(CombatCardAnimator attackerAnimator)
+        private IEnumerator AnimateDirectAttack(
+            CombatStepDto step,
+            int viewerSeat,
+            CombatCardAnimator attackerAnimator)
         {
-            Vector3 targetPosition = CalculateDirectAttackTarget(attackerAnimator);
+            if (!TryGetNexusImpact(
+                    step,
+                    viewerSeat,
+                    out bool targetIsSelf,
+                    out int damagedSeat,
+                    out int healthBefore,
+                    out int healthAfter,
+                    out int damage
+                ))
+            {
+                Debug.LogWarning(
+                    $"Combat step tại slot {step.slotIndex} " +
+                    "không phải direct Nexus attack."
+                );
 
-            yield return attackerAnimator.Strike(targetPosition, strikeDuration);
+                yield break;
+            }
+
+            DamageFeedbackView targetFeedback =
+                targetIsSelf ? selfNexusFeedback : opponentNexusFeedback;
+
+            RectTransform nexusTarget =
+                targetIsSelf ? selfNexusTarget : opponentNexusTarget;
+
+            Vector3 attackPosition = CalculateDirectAttackTarget(
+                attackerAnimator,
+                nexusTarget,
+                targetIsSelf);
+
+            Debug.Log(
+                $"Nexus impact: Viewer={viewerSeat}, DamagedSeat={damagedSeat}, " +
+                $"Target={(targetIsSelf ? "Self" : "Opponent")}, " +
+                $"HP={healthBefore}->{healthAfter}, Damage={damage}."
+            );
+
+            BeginFeedback(targetFeedback);
+
+            yield return attackerAnimator.Strike(attackPosition, strikeDuration);
+
+            if (targetFeedback != null)
+            {
+                StartDamageFeedback(targetFeedback.PlayDamage(damage, healthAfter));
+            }
 
             yield return WaitUnscaled(impactHoldDuration);
 
@@ -284,28 +405,24 @@ namespace KLTN.Game.Presentation
             guestTarget = collisionCenter + collisionAxis * halfDistance;
         }
 
-        private Vector3 CalculateDirectAttackTarget(CombatCardAnimator attackerAnimator)
+        private Vector3 CalculateDirectAttackTarget(
+            CombatCardAnimator attackerAnimator,
+            RectTransform nexusTarget,
+            bool targetIsSelf)
         {
-            bool attackerIsSelf = attackerAnimator.IsSelfCard;
-
-            RectTransform nexusTarget = attackerIsSelf
-                ? opponentNexusTarget
-                : selfNexusTarget;
-
-            Vector3 direction = attackerIsSelf
-                ? Vector3.up
-                : Vector3.down;
+            Vector3 fallbackDirection =
+                targetIsSelf ? Vector3.down : Vector3.up;
 
             if (nexusTarget == null)
             {
-                return attackerAnimator.HomeWorldPosition + direction * directAttackDistance;
+                return attackerAnimator.HomeWorldPosition +
+                       fallbackDirection * directAttackDistance;
             }
 
-            Vector3 nexusCenter = nexusTarget.TransformPoint(nexusTarget.rect.center);
-
+            Vector3 targetPosition = nexusTarget.TransformPoint(nexusTarget.rect.center);
             Vector3 attackerPosition = attackerAnimator.CurrentWorldPosition;
 
-            return new Vector3(attackerPosition.x, nexusCenter.y, attackerPosition.z);
+            return new Vector3(attackerPosition.x, targetPosition.y, attackerPosition.z);
         }
 
         #endregion
@@ -325,10 +442,17 @@ namespace KLTN.Game.Presentation
         {
             animator = null;
 
-            if (card?.cardBefore == null) { return false; }
+            if (!HasResolvedCard(card)) { return false; }
 
-            if (!boardPresenter.TryGetFaceUpVisual(card.cardBefore.instanceId, out NetworkCardVisual visual))
+            if (!boardPresenter.TryGetFaceUpVisual(
+                    card.cardBefore.instanceId,
+                    out NetworkCardVisual visual))
             {
+                Debug.LogWarning(
+                    $"Không tìm thấy combat visual. " +
+                    $"Card={card.cardBefore.instanceId}, Seat={card.seat}."
+                );
+
                 return false;
             }
 
@@ -346,6 +470,213 @@ namespace KLTN.Game.Presentation
 
         #endregion
 
+        #region Damage Feedback
+
+        private void BeginFeedback(DamageFeedbackView feedback)
+        {
+            if (feedback == null) { return; }
+
+            activeFeedbackViews.Add(feedback);
+            feedback.BeginAnticipation();
+        }
+
+        private static IEnumerator PlayCardDamage(
+            DamageFeedbackView feedback,
+            ResolvedCardDto card)
+        {
+            if (feedback == null || !HasResolvedCard(card))
+            {
+                yield break;
+            }
+
+            int damage = Mathf.Max(
+                0,
+                card.cardBefore.health -
+                card.healthAfter);
+
+            yield return feedback.PlayDamage(
+                damage,
+                card.healthAfter);
+        }
+
+        private static bool TryGetNexusImpact(
+            CombatStepDto step,
+            int viewerSeat,
+            out bool targetIsSelf,
+            out int damagedSeat,
+            out int healthBefore,
+            out int healthAfter,
+            out int damage)
+        {
+            const int hostSeat = 0;
+            const int guestSeat = 1;
+
+            bool hasHostCard = HasResolvedCard(step.hostCard);
+            bool hasGuestCard = HasResolvedCard(step.guestCard);
+
+            bool hostAttacksGuest = hasHostCard && !hasGuestCard;
+            bool guestAttacksHost = hasGuestCard && !hasHostCard;
+
+            if (hostAttacksGuest)
+            {
+                damagedSeat = guestSeat;
+                healthBefore = step.guestNexusHealthBefore;
+                healthAfter = step.guestNexusHealthAfter;
+            }
+            else if (guestAttacksHost)
+            {
+                damagedSeat = hostSeat;
+                healthBefore = step.hostNexusHealthBefore;
+                healthAfter = step.hostNexusHealthAfter;
+            }
+            else
+            {
+                targetIsSelf = false;
+                damagedSeat = -1;
+                healthBefore = 0;
+                healthAfter = 0;
+                damage = 0;
+                return false;
+            }
+
+            targetIsSelf = damagedSeat == viewerSeat;
+            damage = Mathf.Max(0, healthBefore - healthAfter);
+            return true;
+        }
+
+        private static bool HasResolvedCard(ResolvedCardDto card)
+        {
+            return card?.cardBefore != null &&
+                   !string.IsNullOrWhiteSpace(card.cardBefore.instanceId);
+        }
+
+        private static string CardIdOrNone(ResolvedCardDto card)
+        {
+            return HasResolvedCard(card)
+                ? card.cardBefore.instanceId
+                : "none";
+        }
+
+        private void ResetFeedbackViews()
+        {
+            foreach (DamageFeedbackView feedback in activeFeedbackViews)
+            {
+                if (feedback != null)
+                {
+                    feedback.ResetImmediately();
+                }
+            }
+
+            activeFeedbackViews.Clear();
+        }
+
+        #endregion
+
+        #region Death Feedback
+
+        private IEnumerator AnimateDeadCards(
+            RoundResolutionDto resolution)
+        {
+            var routines = new List<IEnumerator>();
+            var registeredIds = new HashSet<string>();
+
+            for (int i = 0; i < resolution.steps.Length; i++)
+            {
+                CombatStepDto step = resolution.steps[i];
+
+                RegisterDeathRoutine(
+                    step.hostCard,
+                    registeredIds,
+                    routines);
+
+                RegisterDeathRoutine(
+                    step.guestCard,
+                    registeredIds,
+                    routines);
+            }
+
+            if (routines.Count == 0) { yield break; }
+
+            yield return RunMany(routines);
+
+            // Completed cards remain hidden until the final snapshot is applied.
+            activeDeathFeedbacks.Clear();
+        }
+
+        private void RegisterDeathRoutine(
+            ResolvedCardDto card,
+            HashSet<string> registeredIds,
+            List<IEnumerator> routines)
+        {
+            if (!HasResolvedCard(card) || !card.died) { return; }
+
+            string instanceId =
+                card.cardBefore.instanceId;
+
+            if (!registeredIds.Add(instanceId)) { return; }
+
+            if (!boardPresenter.TryGetFaceUpVisual(
+                    instanceId,
+                    out NetworkCardVisual visual))
+            {
+                Debug.LogWarning(
+                    $"Cannot animate dead card {instanceId}: visual not found.");
+
+                return;
+            }
+
+            CardDeathFeedback deathFeedback =
+                visual.GetComponent<CardDeathFeedback>();
+
+            if (deathFeedback == null)
+            {
+                Debug.LogWarning(
+                    $"Card {instanceId} does not have " +
+                    $"{nameof(CardDeathFeedback)}.");
+
+                return;
+            }
+
+            activeDeathFeedbacks.Add(deathFeedback);
+            routines.Add(deathFeedback.PlayDeath(instanceId));
+        }
+
+        private IEnumerator RunMany(
+            IReadOnlyList<IEnumerator> routines)
+        {
+            int runningCount = routines.Count;
+
+            if (runningCount == 0) { yield break; }
+
+            for (int i = 0; i < routines.Count; i++)
+            {
+                StartCoroutine(
+                    RunTracked(
+                        routines[i],
+                        () => runningCount--));
+            }
+
+            while (runningCount > 0)
+            {
+                yield return null;
+            }
+        }
+
+        private void ResetDeathFeedbacks()
+        {
+            foreach (CardDeathFeedback feedback in activeDeathFeedbacks)
+            {
+                if (feedback != null)
+                {
+                    feedback.ResetImmediately();
+                }
+            }
+
+            activeDeathFeedbacks.Clear();
+        }
+
+        #endregion
+
         #region Coroutine Utilities
 
         private IEnumerator RunTogether(IEnumerator first, IEnumerator second)
@@ -353,17 +684,11 @@ namespace KLTN.Game.Presentation
             int runningCount = 2;
 
             StartCoroutine(
-                RunTracked(
-                    first,
-                    () => runningCount--
-                )
+                RunTracked(first, () => runningCount--)
             );
 
             StartCoroutine(
-                RunTracked(
-                    second,
-                    () => runningCount--
-                )
+                RunTracked(second,() => runningCount--)
             );
 
             while (runningCount > 0)
@@ -387,6 +712,35 @@ namespace KLTN.Game.Presentation
             while (elapsed < duration)
             {
                 elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+
+        private void StartDamageFeedback(
+            IEnumerator feedbackRoutine)
+        {
+            if (feedbackRoutine == null) { return; }
+
+            activeDamageFeedbackCount++;
+            StartCoroutine(
+                RunDamageFeedback(feedbackRoutine));
+        }
+
+        private IEnumerator RunDamageFeedback(
+            IEnumerator feedbackRoutine)
+        {
+            yield return feedbackRoutine;
+
+            activeDamageFeedbackCount =
+                Mathf.Max(
+                    0,
+                    activeDamageFeedbackCount - 1);
+        }
+
+        private IEnumerator WaitForDamageFeedback()
+        {
+            while (activeDamageFeedbackCount > 0)
+            {
                 yield return null;
             }
         }

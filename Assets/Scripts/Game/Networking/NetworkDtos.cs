@@ -92,6 +92,7 @@ namespace KLTN.Game.Networking
         public int seat;
         public CardViewDto cardBefore;
         public int healthAfter;
+        public bool died;
 
         #endregion
     }

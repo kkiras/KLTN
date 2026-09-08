@@ -14,11 +14,9 @@ namespace KLTN.Game.Networking
 
         #region Construction
 
-        public RoundResolutionDtoMapper(
-            IReadOnlyDictionary<string, CardDefinition> definitionsById)
+        public RoundResolutionDtoMapper(IReadOnlyDictionary<string, CardDefinition> definitionsById)
         {
-            this.definitionsById = definitionsById ??
-                throw new ArgumentNullException(nameof(definitionsById));
+            this.definitionsById = definitionsById ?? throw new ArgumentNullException(nameof(definitionsById));
         }
 
         #endregion
@@ -58,32 +56,25 @@ namespace KLTN.Game.Networking
             };
         }
 
-        private ResolvedCardDto BuildCard(
-            CardCombatResolution resolution,
-            MatchState state,
-            int slotIndex)
+        private ResolvedCardDto BuildCard(CardCombatResolution resolution, MatchState state, int slotIndex)
         {
             if (resolution == null) { return null; }
 
             PlayerState player = state.Player(resolution.Seat);
-            CardInstance instance = FindCombatCard(
-                player,
-                resolution.CardInstanceId);
+            CardInstance instance = FindCombatCard(player, resolution.CardInstanceId);
 
             if (instance == null)
             {
-                throw new InvalidOperationException(
-                    $"Cannot map combat card {resolution.CardInstanceId}.");
+                throw new InvalidOperationException($"Cannot map combat card {resolution.CardInstanceId}.");
             }
 
-            definitionsById.TryGetValue(
-                instance.DefinitionId,
-                out CardDefinition definition);
+            definitionsById.TryGetValue(instance.DefinitionId, out CardDefinition definition);
 
             return new ResolvedCardDto
             {
                 seat = (int)resolution.Seat,
                 healthAfter = resolution.HealthAfter,
+                died = resolution.Died,
 
                 cardBefore = new CardViewDto
                 {
@@ -103,9 +94,7 @@ namespace KLTN.Game.Networking
 
         #region Card Lookup
 
-        private static CardInstance FindCombatCard(
-            PlayerState player,
-            ulong instanceId)
+        private static CardInstance FindCombatCard(PlayerState player, ulong instanceId)
         {
             CardInstance card = FindCard(player.Board, instanceId);
 
@@ -114,9 +103,7 @@ namespace KLTN.Game.Networking
             return FindCard(player.Graveyard, instanceId);
         }
 
-        private static CardInstance FindCard(
-            IReadOnlyList<CardInstance> cards,
-            ulong instanceId)
+        private static CardInstance FindCard(IReadOnlyList<CardInstance> cards, ulong instanceId)
         {
             for (int i = 0; i < cards.Count; i++)
             {

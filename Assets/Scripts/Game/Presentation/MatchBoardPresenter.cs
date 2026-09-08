@@ -203,11 +203,14 @@ namespace KLTN.Game.Presentation
                 view != null;
         }
 
-        private void PrepareResolvedCard(ResolvedCardDto resolvedCard, int slotIndex, int viewerSeat)
+        private void PrepareResolvedCard(
+            ResolvedCardDto resolvedCard,
+            int slotIndex,
+            int viewerSeat)
         {
             CardViewDto card = resolvedCard?.cardBefore;
 
-            if (card == null) { return; }
+            if (card == null || string.IsNullOrWhiteSpace(card.instanceId)) { return; }
 
             bool isSelfCard = resolvedCard.seat == viewerSeat;
             RectTransform[] targetSlots = isSelfCard
@@ -219,6 +222,11 @@ namespace KLTN.Game.Presentation
                 slotIndex >= targetSlots.Length ||
                 targetSlots[slotIndex] == null)
             {
+                Debug.LogWarning(
+                    $"Không thể chuẩn bị combat visual. " +
+                    $"Seat={resolvedCard.seat}, Slot={slotIndex}."
+                );
+
                 return;
             }
 

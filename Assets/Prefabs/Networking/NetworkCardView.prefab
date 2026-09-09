@@ -100,7 +100,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
@@ -1117,6 +1117,7 @@ GameObject:
   - component: {fileID: 6268654889630839125}
   - component: {fileID: 7865445435767092295}
   - component: {fileID: 445566876864802084}
+  - component: {fileID: 7085273431415082346}
   m_Layer: 5
   m_Name: NetworkCardView
   m_TagString: Untagged
@@ -1287,7 +1288,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KLTN.Game.Presentation.DamageFeedbackView
   healthText: {fileID: 5795097114576738102}
   receivedDamageText: {fileID: 8383564543874787591}
-  impactFlash: {fileID: 6123285987568443493}
+  impactFlash: {fileID: 0}
   anticipationAlpha: 0.15
   popupTravelOffset: {x: 24, y: 0}
   popupStartScale: 1
@@ -1330,3 +1331,18 @@ MonoBehaviour:
   maximumShardDelay: 0.12
   minimumEndScale: 0.45
   maximumEndScale: 0.75
+--- !u!114 &7085273431415082346
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8477672883293305891}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 374aff23c4056e24fa7fc32306b7c63b, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::KLTN.Game.Presentation.CombatImpactFlashView
+  impactFlash: {fileID: 6123285987568443493}
+  combatColor: {r: 1, g: 0.3, b: 0.12, a: 1}
+  peakAlpha: 0.75

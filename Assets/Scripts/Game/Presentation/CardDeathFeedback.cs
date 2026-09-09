@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -87,6 +88,8 @@ namespace KLTN.Game.Presentation
         private bool canvasBaseInteractable;
         private bool canvasBaseBlocksRaycasts;
         private bool initialized;
+        private int lethalSeed;
+        private bool lethalPrepared;
 
         #endregion
 
@@ -107,16 +110,17 @@ namespace KLTN.Game.Presentation
 
         #region Public API
 
-        public IEnumerator PlayDeath(string instanceId)
+        public IEnumerator ShowLethalHighlight(string instanceId)
         {
             Initialize();
 
-            if (visualRoot == null) { yield break; }
+            if (visualRoot == null || lethalPrepared) { yield break; }
 
             ResetImmediately();
             CaptureVisualState();
 
-            int seed = StableSeed(instanceId);
+            lethalSeed = StableSeed(instanceId);
+            lethalPrepared = true;
 
             if (cardCanvasGroup != null)
             {
@@ -125,15 +129,34 @@ namespace KLTN.Game.Presentation
                 cardCanvasGroup.blocksRaycasts = false;
             }
 
-            PrepareOverlays(seed);
+            PrepareHighlight();
 
-            yield return AnimateHighlightAndCrack(seed);
+            yield return AnimateHighlight();
+        }
 
-            BuildShards(seed);
+        public IEnumerator PlayShatter(
+            string instanceId,
+            Action<Vector3> shatterStarted = null)
+        {
+            Initialize();
+
+            if (visualRoot == null) { yield break; }
+
+            if (!lethalPrepared)
+            {
+                yield return ShowLethalHighlight(instanceId);
+            }
+
+            PrepareCrack(lethalSeed);
+
+            yield return AnimateCrack(lethalSeed);
+
+            BuildShards(lethalSeed);
             Canvas.ForceUpdateCanvases();
 
             yield return null;
 
+            shatterStarted?.Invoke(GetWorldCenter());
             visualRoot.gameObject.SetActive(false);
 
             yield return AnimateShards();
@@ -142,6 +165,14 @@ namespace KLTN.Game.Presentation
             {
                 cardCanvasGroup.alpha = 0f;
             }
+        }
+
+        public IEnumerator PlayDeath(
+            string instanceId,
+            Action<Vector3> shatterStarted = null)
+        {
+            yield return ShowLethalHighlight(instanceId);
+            yield return PlayShatter(instanceId, shatterStarted);
         }
 
         public void ResetImmediately()
@@ -176,6 +207,9 @@ namespace KLTN.Game.Presentation
                 crackOverlay.SetReveal(0f);
                 crackOverlay.gameObject.SetActive(false);
             }
+
+            lethalSeed = 0;
+            lethalPrepared = false;
         }
 
         #endregion
@@ -218,7 +252,7 @@ namespace KLTN.Game.Presentation
 
         #region Anticipation
 
-        private void PrepareOverlays(int seed)
+        private void PrepareHighlight()
         {
             if (purpleHighlight != null)
             {
@@ -229,13 +263,21 @@ namespace KLTN.Game.Presentation
 
             if (crackOverlay != null)
             {
-                crackOverlay.gameObject.SetActive(true);
-                crackOverlay.Configure(seed);
                 crackOverlay.SetReveal(0f);
+                crackOverlay.gameObject.SetActive(false);
             }
         }
 
-        private IEnumerator AnimateHighlightAndCrack(int seed)
+        private void PrepareCrack(int seed)
+        {
+            if (crackOverlay == null) { return; }
+
+            crackOverlay.gameObject.SetActive(true);
+            crackOverlay.Configure(seed);
+            crackOverlay.SetReveal(0f);
+        }
+
+        private IEnumerator AnimateHighlight()
         {
             float elapsed = 0f;
 
@@ -244,26 +286,33 @@ namespace KLTN.Game.Presentation
                 elapsed += Time.unscaledDeltaTime;
 
                 float progress = NormalizedProgress(elapsed, highlightDuration);
-
                 float eased = progress * progress * (3f - 2f * progress);
+                float scalePulse = Mathf.Sin(progress * Mathf.PI);
 
                 SetHighlightAlpha(highlightPeakAlpha * eased);
 
-                visualRoot.localScale =visualHomeScale * (1f + highlightScaleBoost * eased);
+                visualRoot.localScale =
+                    visualHomeScale *
+                    (1f + highlightScaleBoost * scalePulse);
 
                 yield return null;
             }
 
+            SetHighlightAlpha(highlightPeakAlpha);
+            visualRoot.localScale = visualHomeScale;
+        }
+
+        private IEnumerator AnimateCrack(int seed)
+        {
             float phase = (seed & 1023) * 0.017f;
-            elapsed = 0f;
+            float elapsed = 0f;
 
             while (elapsed < crackDuration)
             {
                 elapsed += Time.unscaledDeltaTime;
 
                 float progress = NormalizedProgress(elapsed, crackDuration);
-
-                float shakeWeight =Mathf.Sin(progress * Mathf.PI);
+                float shakeWeight = Mathf.Sin(progress * Mathf.PI);
 
                 Vector2 shakeOffset = new Vector2(
                     Mathf.Sin(progress * 42f + phase),
@@ -271,15 +320,28 @@ namespace KLTN.Game.Presentation
                     shakeDistance *
                     shakeWeight;
 
-                float rotation = Mathf.Sin(progress * 47f + phase) * shakeRotation * shakeWeight;
+                float rotation =
+                    Mathf.Sin(progress * 47f + phase) *
+                    shakeRotation *
+                    shakeWeight;
 
-                visualRoot.anchoredPosition = visualHomePosition + shakeOffset;
+                visualRoot.anchoredPosition =
+                    visualHomePosition +
+                    shakeOffset;
 
-                visualRoot.localRotation = visualHomeRotation * Quaternion.Euler(0f, 0f, rotation);
+                visualRoot.localRotation =
+                    visualHomeRotation *
+                    Quaternion.Euler(0f, 0f, rotation);
 
-                visualRoot.localScale = Vector3.Lerp(visualHomeScale * (1f + highlightScaleBoost), visualHomeScale, progress);
+                visualRoot.localScale =
+                    visualHomeScale *
+                    (1f + highlightScaleBoost * shakeWeight);
 
-                SetHighlightAlpha(Mathf.Lerp(highlightPeakAlpha, highlightPeakAlpha * 0.4f, progress));
+                SetHighlightAlpha(
+                    Mathf.Lerp(
+                        highlightPeakAlpha,
+                        highlightPeakAlpha * 0.4f,
+                        progress));
 
                 if (crackOverlay != null)
                 {
@@ -554,6 +616,15 @@ namespace KLTN.Game.Presentation
 
                 return hash;
             }
+        }
+
+        private Vector3 GetWorldCenter()
+        {
+            RectTransform cardRect = transform as RectTransform;
+
+            return cardRect != null
+                ? cardRect.TransformPoint(cardRect.rect.center)
+                : transform.position;
         }
 
         private static Vector2 RandomDirection(

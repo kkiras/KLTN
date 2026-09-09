@@ -26,6 +26,12 @@ namespace KLTN.Game.Presentation
         [Min(0f)]
         [SerializeField] private float collisionGap = 12f;
 
+        [Min(0f)]
+        [SerializeField] private float nexusContactGap = 4f;
+
+        [Header("VFX")]
+        [SerializeField] private CombatVfxPresenter vfxPresenter;
+
         [Header("Damage Feedback")]
         [SerializeField] private DamageFeedbackView selfNexusFeedback;
         [SerializeField] private DamageFeedbackView opponentNexusFeedback;
@@ -46,6 +52,15 @@ namespace KLTN.Game.Presentation
         [Min(0f)]
         [SerializeField] private float intervalBetweenSlots = 0.08f;
 
+        [Min(0f)]
+        [SerializeField] private float combatPreviewDuration = 1.5f;
+
+        [Min(0f)]
+        [SerializeField] private float deathDelayAfterCombat = 0.5f;
+
+        [Min(0f)]
+        [SerializeField] private float roundTransitionDelayAfterDeath = 1.5f;
+
         #endregion
 
         #region Runtime State
@@ -53,6 +68,8 @@ namespace KLTN.Game.Presentation
         private readonly HashSet<CombatCardAnimator> preparedAnimators = new HashSet<CombatCardAnimator>();
         private readonly HashSet<DamageFeedbackView> activeFeedbackViews = new HashSet<DamageFeedbackView>();
         private readonly HashSet<CardDeathFeedback> activeDeathFeedbacks = new HashSet<CardDeathFeedback>();
+        private readonly Dictionary<string, CardDeathFeedback> pendingDeathsById = new Dictionary<string, CardDeathFeedback>();
+        private readonly Vector3[] nexusTargetCorners = new Vector3[4];
 
         private MatchUpdateInbox inbox;
         private MatchClientProjection projection;
@@ -81,10 +98,12 @@ namespace KLTN.Game.Presentation
             }
 
             StopAllCoroutines();
+
             activeDamageFeedbackCount = 0;
             RestorePreparedCards();
             ResetFeedbackViews();
             ResetDeathFeedbacks();
+            pendingDeathsById.Clear();
 
             if (currentUpdate?.snapshot != null)
             {
@@ -144,9 +163,16 @@ namespace KLTN.Game.Presentation
             RoundResolutionDto resolution = update.resolution;
             int viewerSeat = update.snapshot.viewerSeat;
 
-            boardPresenter.PrepareCombat(resolution, viewerSeat);
+            pendingDeathsById.Clear();
 
+            boardPresenter.PrepareCombat(resolution, viewerSeat);
             Canvas.ForceUpdateCanvases();
+
+            // Unity render ít nhất một frame sau khi reveal các card đã commit
+            yield return null;
+
+            // Cả hai client quan sát toàn bộ board trước khi combat bắt đầu
+            yield return WaitUnscaled(combatPreviewDuration);
 
             // Mỗi step tự wind-up rồi attack
             // Không wind-up cùng lúc toàn bộ board
@@ -160,12 +186,24 @@ namespace KLTN.Game.Presentation
                 }
             }
 
+            bool hasPendingDeaths = pendingDeathsById.Count > 0;
+
+            if (hasPendingDeaths)
+            {
+                yield return WaitUnscaled(deathDelayAfterCombat);
+
+                yield return AnimatePendingDeaths();
+
+                yield return WaitUnscaled(roundTransitionDelayAfterDeath);
+            }
+
             yield return WaitForDamageFeedback();
 
             RestorePreparedCards();
             ResetFeedbackViews();
 
-            yield return AnimateDeadCards(resolution);
+            activeDeathFeedbacks.Clear();
+            pendingDeathsById.Clear();
         }
 
         #endregion
@@ -246,26 +284,25 @@ namespace KLTN.Game.Presentation
             preparedAnimators.Remove(attackerAnimator);
         }
 
-        private IEnumerator AnimateRetreat(
-            CombatCardAnimator first,
-            CombatCardAnimator second)
+        private IEnumerator AnimateRetreat(CombatCardAnimator first, CombatCardAnimator second)
         {
-            if (first != null && second != null)
-            {
-                yield return RunTogether(
-                    first.MoveToRetreat(retreatDuration),
-                    second.MoveToRetreat(retreatDuration)
-                );
+            var routines = new List<IEnumerator>(4);
 
-                yield break;
-            }
+            AddRetreatRoutines(first, routines);
+            AddRetreatRoutines(second, routines);
 
-            CombatCardAnimator animator = first ?? second;
+            yield return RunMany(routines);
+        }
 
-            if (animator != null)
-            {
-                yield return animator.MoveToRetreat(retreatDuration);
-            }
+        private void AddRetreatRoutines(CombatCardAnimator animator, List<IEnumerator> routines)
+        {
+            if (animator == null) { return; }
+
+            routines.Add(animator.MoveToRetreat(retreatDuration));
+
+            CombatImpactFlashView flash = animator.GetComponent<CombatImpactFlashView>();
+
+            if (flash != null) { routines.Add(flash.EaseIn(retreatDuration)); }
         }
 
         private IEnumerator AnimateUnitCollision(
@@ -288,6 +325,9 @@ namespace KLTN.Game.Presentation
                 out Vector3 hostTarget,
                 out Vector3 guestTarget);
 
+            PlaySlide(hostAnimator);
+            PlaySlide(guestAnimator);
+
             yield return RunTogether(
                 hostAnimator.Strike(
                     hostTarget,
@@ -296,6 +336,12 @@ namespace KLTN.Game.Presentation
                 guestAnimator.Strike(
                     guestTarget,
                     strikeDuration));
+
+            if (vfxPresenter != null)
+            {
+                Vector3 impactPosition = (hostTarget + guestTarget) * 0.5f;
+                vfxPresenter.PlayCardHit(impactPosition);
+            }
 
             StartDamageFeedback(
                 PlayCardDamage(
@@ -307,13 +353,13 @@ namespace KLTN.Game.Presentation
                     guestFeedback,
                     step.guestCard));
 
-            yield return WaitUnscaled(
-                impactHoldDuration);
+            yield return WaitUnscaled(impactHoldDuration);
 
-            yield return RunTogether(
-                hostAnimator.ReturnHome(returnDuration),
-                guestAnimator.ReturnHome(returnDuration));
+            yield return ShowStepLethalHighlights(step);
+
+            yield return ReturnAfterCollision(hostAnimator, guestAnimator);
         }
+
         private IEnumerator AnimateDirectAttack(
             CombatStepDto step,
             int viewerSeat,
@@ -346,7 +392,8 @@ namespace KLTN.Game.Presentation
             Vector3 attackPosition = CalculateDirectAttackTarget(
                 attackerAnimator,
                 nexusTarget,
-                targetIsSelf);
+                targetIsSelf,
+                out Vector3 nexusImpactPosition);
 
             Debug.Log(
                 $"Nexus impact: Viewer={viewerSeat}, DamagedSeat={damagedSeat}, " +
@@ -355,8 +402,14 @@ namespace KLTN.Game.Presentation
             );
 
             BeginFeedback(targetFeedback);
+            PlaySlide(attackerAnimator);
 
             yield return attackerAnimator.Strike(attackPosition, strikeDuration);
+
+            if (vfxPresenter != null)
+            {
+                vfxPresenter.PlayNexusHit(nexusImpactPosition, targetIsSelf);
+            }
 
             if (targetFeedback != null)
             {
@@ -365,7 +418,61 @@ namespace KLTN.Game.Presentation
 
             yield return WaitUnscaled(impactHoldDuration);
 
-            yield return attackerAnimator.ReturnHome(returnDuration);
+            yield return ReturnCard(attackerAnimator);
+        }
+
+        private IEnumerator ReturnAfterCollision(
+            CombatCardAnimator hostAnimator,
+            CombatCardAnimator guestAnimator)
+        {
+            yield return RunTogether(
+                ReturnCard(hostAnimator),
+                ReturnCard(guestAnimator));
+        }
+
+        private IEnumerator ReturnCard(CombatCardAnimator animator)
+        {
+            if (animator == null) { yield break; }
+
+            CombatImpactFlashView flash = animator.GetComponent<CombatImpactFlashView>();
+
+            if (flash == null)
+            {
+                yield return animator.ReturnHome(returnDuration);
+                yield break;
+            }
+
+            yield return RunTogether(
+                animator.ReturnHome(returnDuration),
+                flash.FadeOut(returnDuration));
+        }
+
+        #endregion
+
+        #region Combat VFX
+
+        private void PlaySlide(CombatCardAnimator animator)
+        {
+            if (vfxPresenter == null || animator == null) { return; }
+
+            Vector3 trailingDirection = animator.IsSelfCard
+                ? Vector3.down
+                : Vector3.up;
+
+            Vector3 effectPosition =
+                animator.CurrentWorldPosition +
+                trailingDirection * animator.WorldHeight * 0.42f;
+
+            bool flip = !animator.IsSelfCard;
+            vfxPresenter.PlaySlide(effectPosition, flip);
+        }
+
+        private void PlayDeathDust(Vector3 worldPosition)
+        {
+            if (vfxPresenter != null)
+            {
+                vfxPresenter.PlayDeathDust(worldPosition);
+            }
         }
 
         #endregion
@@ -408,21 +515,45 @@ namespace KLTN.Game.Presentation
         private Vector3 CalculateDirectAttackTarget(
             CombatCardAnimator attackerAnimator,
             RectTransform nexusTarget,
-            bool targetIsSelf)
+            bool targetIsSelf,
+            out Vector3 impactWorldPosition)
         {
-            Vector3 fallbackDirection =
-                targetIsSelf ? Vector3.down : Vector3.up;
+            Vector3 attackerPosition = attackerAnimator.CurrentWorldPosition;
+            Vector3 fallbackDirection = targetIsSelf ? Vector3.down : Vector3.up;
 
             if (nexusTarget == null)
             {
-                return attackerAnimator.HomeWorldPosition +
-                       fallbackDirection * directAttackDistance;
+                Vector3 fallbackTarget =
+                    attackerAnimator.HomeWorldPosition +
+                    fallbackDirection * directAttackDistance;
+
+                impactWorldPosition = fallbackTarget;
+                return fallbackTarget;
             }
 
-            Vector3 targetPosition = nexusTarget.TransformPoint(nexusTarget.rect.center);
-            Vector3 attackerPosition = attackerAnimator.CurrentWorldPosition;
+            nexusTarget.GetWorldCorners(nexusTargetCorners);
 
-            return new Vector3(attackerPosition.x, targetPosition.y, attackerPosition.z);
+            float contactEdgeY = targetIsSelf
+                ? Mathf.Max(nexusTargetCorners[1].y, nexusTargetCorners[2].y)
+                : Mathf.Min(nexusTargetCorners[0].y, nexusTargetCorners[3].y);
+
+            float distanceFromCardCenter =
+                attackerAnimator.WorldHeight * 0.5f +
+                nexusContactGap;
+
+            float cardCenterY = targetIsSelf
+                ? contactEdgeY + distanceFromCardCenter
+                : contactEdgeY - distanceFromCardCenter;
+
+            impactWorldPosition = new Vector3(
+                attackerPosition.x,
+                contactEdgeY,
+                attackerPosition.z);
+
+            return new Vector3(
+                attackerPosition.x,
+                cardCenterY,
+                attackerPosition.z);
         }
 
         #endregion
@@ -574,53 +705,32 @@ namespace KLTN.Game.Presentation
 
         #region Death Feedback
 
-        private IEnumerator AnimateDeadCards(
-            RoundResolutionDto resolution)
+        private IEnumerator ShowStepLethalHighlights(CombatStepDto step)
         {
-            var routines = new List<IEnumerator>();
-            var registeredIds = new HashSet<string>();
+            var routines = new List<IEnumerator>(2);
 
-            for (int i = 0; i < resolution.steps.Length; i++)
-            {
-                CombatStepDto step = resolution.steps[i];
-
-                RegisterDeathRoutine(
-                    step.hostCard,
-                    registeredIds,
-                    routines);
-
-                RegisterDeathRoutine(
-                    step.guestCard,
-                    registeredIds,
-                    routines);
-            }
-
-            if (routines.Count == 0) { yield break; }
+            RegisterLethalHighlight(step.hostCard, routines);
+            RegisterLethalHighlight(step.guestCard, routines);
 
             yield return RunMany(routines);
-
-            // Completed cards remain hidden until the final snapshot is applied.
-            activeDeathFeedbacks.Clear();
         }
 
-        private void RegisterDeathRoutine(
+        private void RegisterLethalHighlight(
             ResolvedCardDto card,
-            HashSet<string> registeredIds,
             List<IEnumerator> routines)
         {
-            if (!HasResolvedCard(card) || !card.died) { return; }
+            if (!IsDead(card)) { return; }
 
-            string instanceId =
-                card.cardBefore.instanceId;
+            string instanceId = card.cardBefore.instanceId;
 
-            if (!registeredIds.Add(instanceId)) { return; }
+            if (pendingDeathsById.ContainsKey(instanceId)) { return; }
 
             if (!boardPresenter.TryGetFaceUpVisual(
                     instanceId,
                     out NetworkCardVisual visual))
             {
                 Debug.LogWarning(
-                    $"Cannot animate dead card {instanceId}: visual not found.");
+                    $"Cannot prepare dead card {instanceId}: visual not found.");
 
                 return;
             }
@@ -637,29 +747,23 @@ namespace KLTN.Game.Presentation
                 return;
             }
 
+            pendingDeathsById.Add(instanceId, deathFeedback);
             activeDeathFeedbacks.Add(deathFeedback);
-            routines.Add(deathFeedback.PlayDeath(instanceId));
+            routines.Add(deathFeedback.ShowLethalHighlight(instanceId));
         }
 
-        private IEnumerator RunMany(
-            IReadOnlyList<IEnumerator> routines)
+        private IEnumerator AnimatePendingDeaths()
         {
-            int runningCount = routines.Count;
+            var routines = new List<IEnumerator>(pendingDeathsById.Count);
 
-            if (runningCount == 0) { yield break; }
-
-            for (int i = 0; i < routines.Count; i++)
+            foreach (KeyValuePair<string, CardDeathFeedback> pair in pendingDeathsById)
             {
-                StartCoroutine(
-                    RunTracked(
-                        routines[i],
-                        () => runningCount--));
+                if (pair.Value == null) { continue; }
+
+                routines.Add(pair.Value.PlayShatter(pair.Key, PlayDeathDust));
             }
 
-            while (runningCount > 0)
-            {
-                yield return null;
-            }
+            yield return RunMany(routines);
         }
 
         private void ResetDeathFeedbacks()
@@ -675,21 +779,36 @@ namespace KLTN.Game.Presentation
             activeDeathFeedbacks.Clear();
         }
 
+        private static bool IsDead(ResolvedCardDto card)
+        {
+            return HasResolvedCard(card) && card.died;
+        }
+
         #endregion
 
         #region Coroutine Utilities
 
         private IEnumerator RunTogether(IEnumerator first, IEnumerator second)
         {
-            int runningCount = 2;
+            var routines = new List<IEnumerator>(2) { first, second };
+            yield return RunMany(routines);
+        }
 
-            StartCoroutine(
-                RunTracked(first, () => runningCount--)
-            );
+        private IEnumerator RunMany(IReadOnlyList<IEnumerator> routines)
+        {
+            if (routines == null || routines.Count == 0) { yield break; }
 
-            StartCoroutine(
-                RunTracked(second,() => runningCount--)
-            );
+            int runningCount = 0;
+
+            for (int i = 0; i < routines.Count; i++)
+            {
+                IEnumerator routine = routines[i];
+
+                if (routine == null) { continue; }
+
+                runningCount++;
+                StartCoroutine(RunTracked(routine, () => runningCount--));
+            }
 
             while (runningCount > 0)
             {
@@ -755,6 +874,7 @@ namespace KLTN.Game.Presentation
             {
                 if (animator != null)
                 {
+                    animator.GetComponent<CombatImpactFlashView>()?.ResetImmediately();
                     animator.RestoreImmediately();
                 }
             }

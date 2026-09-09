@@ -15,6 +15,7 @@ namespace KLTN.Game.Presentation
         [SerializeField] private RectTransform animationLayer;
         [SerializeField] private RectTransform selfNexusTarget;
         [SerializeField] private RectTransform opponentNexusTarget;
+        [SerializeField] private MatchTransitionBanner transitionBanner;
 
         [Header("Movement")]
         [Min(0f)]
@@ -58,8 +59,8 @@ namespace KLTN.Game.Presentation
         [Min(0f)]
         [SerializeField] private float deathDelayAfterCombat = 0.5f;
 
-        [Min(0f)]
-        [SerializeField] private float roundTransitionDelayAfterDeath = 1.5f;
+        [SerializeField, Min(0f)] private float roundEndDelayBeforeBanner = 0.75f;
+        [SerializeField, Min(0f)] private float roundEndDelayAfterBanner = 0.75f;
 
         #endregion
 
@@ -168,14 +169,10 @@ namespace KLTN.Game.Presentation
             boardPresenter.PrepareCombat(resolution, viewerSeat);
             Canvas.ForceUpdateCanvases();
 
-            // Unity render ít nhất một frame sau khi reveal các card đã commit
             yield return null;
 
-            // Cả hai client quan sát toàn bộ board trước khi combat bắt đầu
             yield return WaitUnscaled(combatPreviewDuration);
 
-            // Mỗi step tự wind-up rồi attack
-            // Không wind-up cùng lúc toàn bộ board
             for (int i = 0; i < resolution.steps.Length; i++)
             {
                 yield return AnimateStep(resolution.steps[i], viewerSeat);
@@ -191,10 +188,7 @@ namespace KLTN.Game.Presentation
             if (hasPendingDeaths)
             {
                 yield return WaitUnscaled(deathDelayAfterCombat);
-
                 yield return AnimatePendingDeaths();
-
-                yield return WaitUnscaled(roundTransitionDelayAfterDeath);
             }
 
             yield return WaitForDamageFeedback();
@@ -204,6 +198,19 @@ namespace KLTN.Game.Presentation
 
             activeDeathFeedbacks.Clear();
             pendingDeathsById.Clear();
+
+            yield return WaitUnscaled(roundEndDelayBeforeBanner);
+
+            if (transitionBanner != null)
+            {
+                yield return transitionBanner.PlayRoundEnd(resolution.roundNumber);
+            }
+            else
+            {
+                Debug.LogError("CombatAnimationDirector has no MatchTransitionBanner reference.", this);
+            }
+
+            yield return WaitUnscaled(roundEndDelayAfterBanner);
         }
 
         #endregion

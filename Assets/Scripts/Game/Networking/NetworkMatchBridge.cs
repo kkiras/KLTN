@@ -119,8 +119,6 @@ namespace KLTN.Game.Networking
 
         private void AssignConnectedClients()
         {
-            // A listen host owns a local gameplay client. A dedicated server
-            // does not, so the first remote client receives the Host seat.
             if (NetworkManager.IsHost) { AssignClientToSeat(NetworkManager.LocalClientId, SeatId.Host); }
 
             foreach (ulong clientId in

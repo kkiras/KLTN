@@ -13,8 +13,7 @@ MonoBehaviour:
   m_Name: MaLon
   m_EditorClassIdentifier: Assembly-CSharp::CMCMProductions.Card
   cardName: Ma Lon
-  artwork: {fileID: 21300000, guid: 09dcc2e76a7d3c44b975122c6b14c139, type: 3}
-  cardType: 
+  cardType: 03000000
   health: 1
   damage: 1
   energy: 1

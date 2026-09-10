@@ -1,4 +1,3 @@
-using CMCMProductions;
 using KLTN.Game.Networking;
 using TMPro;
 using UnityEngine;
@@ -10,13 +9,26 @@ namespace KLTN.Game.Presentation
     {
         #region Serialized Fields
 
-        [SerializeField] private Image artworkImage;
+        [Header("Artwork")]
+        [SerializeField] private RectTransform artworkMount;
+        [SerializeField] private Image cardBackImage;
+
+        [Header("Runtime Text")]
         [SerializeField] private TMP_Text fallbackNameText;
         [SerializeField] private TMP_Text costText;
         [SerializeField] private TMP_Text damageText;
         [SerializeField] private TMP_Text healthText;
+
+        [Header("Visual State")]
         [SerializeField] private GameObject pendingOverlay;
         [SerializeField] private CanvasGroup canvasGroup;
+
+        #endregion
+
+        #region Runtime State
+
+        private CardArtworkView currentArtworkPrefab;
+        private CardArtworkView spawnedArtwork;
 
         #endregion
 
@@ -29,17 +41,15 @@ namespace KLTN.Game.Presentation
 
         #region Binding
 
-        public void BindFaceUp(CardViewDto dto, Card asset)
+        public void BindFaceUp(CardViewDto dto, CardArtworkView artworkPrefab)
         {
             InstanceId = dto.instanceId;
             Energy = dto.energy;
-            bool hasArtwork = asset != null && asset.artwork != null;
 
-            if (artworkImage != null)
-            {
-                artworkImage.sprite = hasArtwork ? asset.artwork : null;
-                artworkImage.enabled = hasArtwork;
-            }
+            bool hasArtwork = artworkMount != null && artworkPrefab != null;
+
+            SetCardBack(null);
+            SetFaceArtwork(hasArtwork ? artworkPrefab : null);
 
             if (fallbackNameText != null)
             {
@@ -69,20 +79,13 @@ namespace KLTN.Game.Presentation
             SetInteractableVisual(true);
         }
 
-        #endregion
-
-        #region Visual State
-
         public void BindBack(Sprite cardBack)
         {
             InstanceId = null;
             Energy = 0;
 
-            if (artworkImage != null)
-            {
-                artworkImage.sprite = cardBack;
-                artworkImage.enabled = cardBack != null;
-            }
+            ClearFaceArtwork();
+            SetCardBack(cardBack);
 
             if (fallbackNameText != null) { fallbackNameText.gameObject.SetActive(false); }
 
@@ -92,6 +95,70 @@ namespace KLTN.Game.Presentation
             SetPending(false);
             SetInteractableVisual(true);
         }
+
+        #endregion
+
+        #region Artwork
+
+        private void SetFaceArtwork(CardArtworkView artworkPrefab)
+        {
+            if (artworkPrefab == currentArtworkPrefab && spawnedArtwork != null) { return; }
+
+            ClearFaceArtwork();
+
+            if (artworkPrefab == null || artworkMount == null) { return; }
+
+            currentArtworkPrefab = artworkPrefab;
+            spawnedArtwork = Instantiate(artworkPrefab, artworkMount, false);
+
+            RectTransform artworkRect = spawnedArtwork.transform as RectTransform;
+
+            if (artworkRect == null)
+            {
+                Debug.LogError(
+                    $"Artwork prefab {artworkPrefab.name} requires a RectTransform.",
+                    artworkPrefab
+                );
+
+                ClearFaceArtwork();
+                return;
+            }
+
+            artworkRect.anchorMin = Vector2.zero;
+            artworkRect.anchorMax = Vector2.one;
+            artworkRect.pivot = new Vector2(0.5f, 0.5f);
+            artworkRect.offsetMin = Vector2.zero;
+            artworkRect.offsetMax = Vector2.zero;
+            artworkRect.localScale = Vector3.one;
+            artworkRect.localRotation = Quaternion.identity;
+            artworkRect.SetAsFirstSibling();
+        }
+
+        private void ClearFaceArtwork()
+        {
+            currentArtworkPrefab = null;
+
+            if (spawnedArtwork == null) { return; }
+
+            spawnedArtwork.gameObject.SetActive(false);
+            Destroy(spawnedArtwork.gameObject);
+            spawnedArtwork = null;
+        }
+
+        private void SetCardBack(Sprite cardBack)
+        {
+            if (cardBackImage == null) { return; }
+
+            bool visible = cardBack != null;
+
+            cardBackImage.sprite = cardBack;
+            cardBackImage.enabled = visible;
+            cardBackImage.gameObject.SetActive(visible);
+        }
+
+        #endregion
+
+        #region Visual State
 
         public void SetPending(bool value)
         {

@@ -9,7 +9,6 @@ namespace CMCMProductions
         #region Card Data
 
         public string cardName;
-        public Sprite artwork;
         public List<CardType> cardType;
         public int health;
         public int damage;

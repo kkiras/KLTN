@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c96c3aa44bc6e06438c40d2071b127c9, type: 3}
+  m_Name: CardPresentationCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::KLTN.Game.Content.CardPresentationCatalog
+  entries:
+  - cardAsset: {fileID: 11400000, guid: 82a750698af9aa94d94e7a9e8173ba45, type: 2}
+    artworkPrefab: {fileID: 6755696708567395301, guid: 8b826b2d943affe4f958eeabc6849b1f, type: 3}
+  - cardAsset: {fileID: 11400000, guid: 3190a9512bb64594a9e59f77417ba1c4, type: 2}
+    artworkPrefab: {fileID: 4169611438609921783, guid: 2ddaeeafbd83a4f49b5f1d2f24c8127e, type: 3}
+  - cardAsset: {fileID: 11400000, guid: b8d161f9911e5d54a892ddab793cd032, type: 2}
+    artworkPrefab: {fileID: 6290182089736050142, guid: 4303b10f170980046b264f7b8049eb18, type: 3}
+  - cardAsset: {fileID: 11400000, guid: d2c522e34806841418605a249ddf8aee, type: 2}
+    artworkPrefab: {fileID: 8108540183811770018, guid: 88b80c80bb09b744ebd3ebd69ed71f8e, type: 3}
+  - cardAsset: {fileID: 11400000, guid: 0aa37a8b9daa3434fbb9a0f737356245, type: 2}
+    artworkPrefab: {fileID: 8153736207256496994, guid: 1527b0d6029bad547b6a94fc7e519d9e, type: 3}
+  - cardAsset: {fileID: 11400000, guid: a73e8f8560d7b2244b524e8c7d54784c, type: 2}
+    artworkPrefab: {fileID: 6805573092596320508, guid: c221a802d9554214aa3c2199d661987b, type: 3}
+  - cardAsset: {fileID: 11400000, guid: f8a52ee9e0fe0ac4db8f9d8af44d5897, type: 2}
+    artworkPrefab: {fileID: 2174023422403138420, guid: 870f998038885234e99405353f25c721, type: 3}
+  - cardAsset: {fileID: 11400000, guid: 0266d16924dde544f9ef239a13abe654, type: 2}
+    artworkPrefab: {fileID: 8038171763429395123, guid: b836a729548623b47ae351b71925144a, type: 3}
+  - cardAsset: {fileID: 11400000, guid: 83d8a602c1e915e42bd2c724eecc8b2f, type: 2}
+    artworkPrefab: {fileID: 6508849604072869410, guid: ebaac683f0490d24ebd0b485442652ba, type: 3}
+  - cardAsset: {fileID: 11400000, guid: cbe163c5e37ecec4f96dcd0d7edfdf78, type: 2}
+    artworkPrefab: {fileID: 6814613747464608577, guid: d5cb441e5fb37804aade8fb07c2cedae, type: 3}
+  - cardAsset: {fileID: 11400000, guid: 706902a40e7f25d41af8fe1f214db37e, type: 2}
+    artworkPrefab: {fileID: 7196851432126974298, guid: 091ae1f86dacf3348bc32ab858d820e7, type: 3}
+  - cardAsset: {fileID: 11400000, guid: 7737e8512afc7f547bd222a5df1c9108, type: 2}
+    artworkPrefab: {fileID: 8855595587600847399, guid: a1e8deea6e0494f49875bc9ffef3a47c, type: 3}
+  - cardAsset: {fileID: 11400000, guid: d0ace46787ac4384c90155d345a3d8fa, type: 2}
+    artworkPrefab: {fileID: 6712479606658558795, guid: 010c4426efeaecd4abd1cf5b35bf9b98, type: 3}
+  - cardAsset: {fileID: 11400000, guid: a2b94e5b129ead142a7e5770114d6017, type: 2}
+    artworkPrefab: {fileID: 8109566002883652619, guid: 7e45ba0fd9f37324ab1b6347ce83e8eb, type: 3}
+  - cardAsset: {fileID: 11400000, guid: a6f89f50e6b9b7f4a8fe817082e688f7, type: 2}
+    artworkPrefab: {fileID: 8271558050070483483, guid: 2c286a27db11e6d439252a653a05ef89, type: 3}
+  - cardAsset: {fileID: 11400000, guid: 236eb4ba110ec0f4db605c8c0b434125, type: 2}
+    artworkPrefab: {fileID: 7714982705396626579, guid: 6b5bfc5cbc1dcfe498f62da3193eaf45, type: 3}
+  - cardAsset: {fileID: 11400000, guid: 010dc96db4e3d1d4b9ce105dc1fc6d63, type: 2}
+    artworkPrefab: {fileID: 488074009050168003, guid: 1a168181a947b5b418e9397132fae41d, type: 3}
+  - cardAsset: {fileID: 11400000, guid: 305227b80afabee42a7a3666b9efacb9, type: 2}
+    artworkPrefab: {fileID: 4480164709567122639, guid: 3474227e21f2fa64aacbd29e8d3544af, type: 3}
+  - cardAsset: {fileID: 11400000, guid: fbfce38ed00dbca42bd64a2a252ffe63, type: 2}
+    artworkPrefab: {fileID: 3348502161953955227, guid: df485ea884e0205479646e79935cef9d, type: 3}

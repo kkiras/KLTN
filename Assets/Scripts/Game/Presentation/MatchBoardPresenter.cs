@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using CMCMProductions;
 using KLTN.Game.Content;
 using KLTN.Game.Networking;
 using UnityEngine;
@@ -11,7 +10,7 @@ namespace KLTN.Game.Presentation
         #region Serialized Fields
 
         [SerializeField] private NetworkCardVisual cardPrefab;
-
+        [SerializeField] private CardPresentationCatalog presentationCatalog;
         [SerializeField] private Sprite cardBack;
 
         [Header("Hands")]
@@ -33,7 +32,6 @@ namespace KLTN.Game.Presentation
 
         private readonly List<GameObject> spawnedViews = new List<GameObject>();
         private MatchClientProjection projection;
-        private CardAssetCatalog catalog;
 
         private readonly List<GameObject> opponentHandBacks = new List<GameObject>();
 
@@ -42,11 +40,6 @@ namespace KLTN.Game.Presentation
         #endregion
 
         #region Unity Lifecycle
-
-        private void Awake()
-        {
-            catalog = new CardAssetCatalog();
-        }
 
         private void OnEnable()
         {
@@ -152,8 +145,7 @@ namespace KLTN.Game.Presentation
 
             if (layout != null) { layout.Apply(location); }
 
-            Card asset = catalog.Find(dto.definitionId);
-            view.BindFaceUp(dto, asset);
+            view.BindFaceUp(dto, FindArtwork(dto.definitionId));
             DraggableHandCard draggable = view.GetComponent<DraggableHandCard>();
 
             if (draggable != null) { draggable.Configure(canDrag, dragLayer); }
@@ -270,8 +262,7 @@ namespace KLTN.Game.Presentation
                 cardRect.localRotation = Quaternion.identity;
             }
 
-            Card asset = catalog.Find(card.definitionId);
-            view.BindFaceUp(card, asset);
+            view.BindFaceUp(card, FindArtwork(card.definitionId));
 
             DraggableHandCard draggable = view.GetComponent<DraggableHandCard>();
 
@@ -297,6 +288,17 @@ namespace KLTN.Game.Presentation
                 Destroy(cardBackObject);
                 return;
             }
+        }
+
+        #endregion
+
+        #region Artwork Lookup
+
+        private CardArtworkView FindArtwork(string definitionId)
+        {
+            if (presentationCatalog == null) { return null; }
+
+            return presentationCatalog.Find(definitionId);
         }
 
         #endregion

@@ -149,6 +149,8 @@ namespace KLTN.Game.Presentation
         {
             MatchSnapshotDto snapshot = projection?.Current;
 
+            if (snapshot != null && snapshot.roundNumber == 0) return;
+
             if (snapshot == null ||
                 !snapshot.viewerCanAct ||
                 submitting ||
@@ -229,6 +231,8 @@ namespace KLTN.Game.Presentation
         private void RefreshControls()
         {
             MatchSnapshotDto snapshot = projection?.Current;
+            if (snapshot != null && snapshot.roundNumber == 0) return;
+
             bool canAct = snapshot != null && snapshot.viewerCanAct && !submitting;
 
             if (actionButton != null) { actionButton.interactable = canAct; }

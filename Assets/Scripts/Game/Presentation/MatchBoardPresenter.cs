@@ -25,6 +25,7 @@ namespace KLTN.Game.Presentation
 
         [Header("Drag")]
         [SerializeField] private RectTransform dragLayer;
+        public MulliganPresenter mulliganPresenter;
 
         #endregion
 
@@ -72,7 +73,16 @@ namespace KLTN.Game.Presentation
                 return;
             }
 
-            RenderSelfHand(snapshot);
+            if (mulliganPresenter != null)
+            {
+                mulliganPresenter.UpdateMulliganState(snapshot);
+            }
+
+            if (snapshot.roundNumber > 0)
+            {
+                RenderSelfHand(snapshot);
+            }
+
             RenderOpponentHand(snapshot);
             RenderBoard(snapshot.self.board, selfBoardSlots);
             RenderBoard(snapshot.opponent.board, opponentBoardSlots);
@@ -89,7 +99,7 @@ namespace KLTN.Game.Presentation
             foreach (CardViewDto dto in snapshot.self.hand)
             {
                 bool canDrag = snapshot.viewerCanAct && dto.energy <= snapshot.self.mana;
-            CreateFaceUpCard(dto, selfHandRoot, canDrag, CardVisualLocation.Hand);
+                CreateFaceUpCard(dto, selfHandRoot, canDrag, CardVisualLocation.Hand);
             }
         }
 
@@ -134,7 +144,7 @@ namespace KLTN.Game.Presentation
                     continue;
                 }
 
-            CreateFaceUpCard(dto, slots[dto.boardSlotIndex], false, CardVisualLocation.Board);
+                CreateFaceUpCard(dto, slots[dto.boardSlotIndex], false, CardVisualLocation.Board);
             }
         }
 

@@ -195,6 +195,52 @@ namespace KLTN.Game.Domain
         }
 
         #endregion
+
+        #region Mulligan Logic
+
+        public void PerformMulligan(ulong[] cardIdsToReplace, Random rng)
+        {
+            if (cardIdsToReplace == null || cardIdsToReplace.Length == 0) return;
+
+            int replaceCount = 0;
+
+
+            for (int i = Hand.Count - 1; i >= 0; i--)
+            {
+                if (Array.Exists(cardIdsToReplace, id => id == Hand[i].InstanceId))
+                {
+                    CardInstance card = Hand[i];
+                    Hand.RemoveAt(i);
+                    card.MoveTo(CardZone.Deck);
+                    Deck.Add(card);
+                    replaceCount++;
+                }
+            }
+
+
+            ShuffleDeck(rng);
+
+
+            for (int i = 0; i < replaceCount; i++)
+            {
+                DrawOne();
+            }
+        }
+
+        private void ShuffleDeck(Random rng)
+        {
+            int n = Deck.Count;
+            while (n > 1)
+            {
+                n--;
+                int k = rng.Next(n + 1);
+                CardInstance value = Deck[k];
+                Deck[k] = Deck[n];
+                Deck[n] = value;
+            }
+        }
+
+        #endregion
     }
 
     public enum MatchOutcome : byte
@@ -219,13 +265,18 @@ namespace KLTN.Game.Domain
         public PlayerState Guest { get; } = new PlayerState(SeatId.Guest);
 
         public SeatId FirstSeat { get; }
-        public SeatId ActiveSeat { get; internal set; }
+        public SeatId ActiveSeat { get; set; }
 
-        public int RoundNumber { get; internal set; } = 1;
-        public int ActionsCompletedInRound { get; internal set; }
+        public int RoundNumber { get; set; } = 0;
 
-        public MatchOutcome Outcome { get; internal set; } = MatchOutcome.Running;
-        public string LastEvent { get; internal set; } = "Đã chia bài mở đầu.";
+        public bool HostMulliganDone { get; set; }
+        public bool GuestMulliganDone { get; set; }
+        public bool IsMulliganPhaseComplete => HostMulliganDone && GuestMulliganDone;
+
+        public int ActionsCompletedInRound { get; set; }
+
+        public MatchOutcome Outcome { get; set; } = MatchOutcome.Running;
+        public string LastEvent { get; set; } = "Đang chờ đối thủ đổi bài (Mulligan)...";
         public bool IsFinished => Outcome != MatchOutcome.Running;
 
         #endregion

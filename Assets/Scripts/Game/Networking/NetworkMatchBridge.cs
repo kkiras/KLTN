@@ -4,6 +4,7 @@ using CMCMProductions;
 using KLTN.Game.Domain;
 using Unity.Netcode;
 using UnityEngine;
+using System.Collections;
 
 namespace KLTN.Game.Networking
 {
@@ -14,6 +15,8 @@ namespace KLTN.Game.Networking
 
         private const int DeckSize = 20;
         private const int OpeningHandSize = 4;
+        private const int SnapshotRequestAttempts = 10;
+        private const float SnapshotRequestIntervalSeconds = 0.5f;
 
         #endregion
 
@@ -22,16 +25,20 @@ namespace KLTN.Game.Networking
         private readonly Dictionary<ulong, SeatId> seatByClient = new Dictionary<ulong, SeatId>();
         private readonly Dictionary<string, CardDefinition> definitionsById = new Dictionary<string, CardDefinition>();
         private readonly Dictionary<ulong, ulong> lastCommandIdByClient = new Dictionary<ulong, ulong>();
+        private readonly HashSet<ulong> pendingSnapshotClients = new HashSet<ulong>();
         private ulong revision;
         private MatchState matchState;
         private MatchRulesEngine rulesEngine;
         private MatchSnapshotBuilder snapshotBuilder;
+        private RoundResolutionDtoMapper resolutionDtoMapper;
 
         #endregion
 
         #region Client State
 
         private ulong nextLocalCommandId = 1;
+        private Coroutine initialSnapshotCoroutine;
+        private bool hasReceivedSnapshot;
 
         #endregion
 
@@ -39,29 +46,47 @@ namespace KLTN.Game.Networking
 
         public override void OnNetworkSpawn()
         {
+            hasReceivedSnapshot = false;
+
             if (IsServer)
             {
                 NetworkManager.OnClientConnectedCallback += OnClientConnected;
                 NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
+
                 AssignConnectedClients();
                 TryInitializeMatch();
-                BroadcastSnapshots();
+                BroadcastUpdate();
             }
 
-            // A guest requests state only after its NetworkObject has spawned,
-            // preventing the RPC from arriving before the object exists.
-            if (IsClient && !IsServer) { RequestSnapshotRpc(); }
+            if (IsClient && !IsServer)
+            {
+                initialSnapshotCoroutine = StartCoroutine(RequestInitialSnapshot());
+            }
+
+            Debug.Log(
+                $"NetworkMatchBridge spawned. " +
+                $"ClientId={NetworkManager.LocalClientId}, " +
+                $"IsServer={IsServer}, IsClient={IsClient}, " +
+                $"NetworkObjectId={NetworkObjectId}.");
         }
 
         public override void OnNetworkDespawn()
         {
+            if (initialSnapshotCoroutine != null)
+            {
+                StopCoroutine(initialSnapshotCoroutine);
+                initialSnapshotCoroutine = null;
+            }
+
             if (IsServer && NetworkManager != null)
             {
                 NetworkManager.OnClientConnectedCallback -= OnClientConnected;
                 NetworkManager.OnClientDisconnectCallback -= OnClientDisconnected;
             }
 
+            pendingSnapshotClients.Clear();
             MatchProjectionRegistry.Current.Reset();
+            MatchUpdateInboxRegistry.Current.Reset();
         }
 
         #endregion
@@ -74,7 +99,7 @@ namespace KLTN.Game.Networking
 
             AssignClient(clientId);
             TryInitializeMatch();
-            BroadcastSnapshots();
+            BroadcastUpdate();
         }
 
         private void OnClientDisconnected(ulong clientId)
@@ -87,8 +112,9 @@ namespace KLTN.Game.Networking
             matchState = null;
             rulesEngine = null;
             snapshotBuilder = null;
+            resolutionDtoMapper = null;
             definitionsById.Clear();
-            BroadcastSnapshots();
+            BroadcastUpdate();
         }
 
         private void AssignConnectedClients()
@@ -153,12 +179,15 @@ namespace KLTN.Game.Networking
         private void RequestSnapshotRpc(RpcParams rpcParams = default)
         {
             ulong senderClientId = rpcParams.Receive.SenderClientId;
+
+            Debug.Log($"Snapshot request received from client {senderClientId}.");
+
             AssignClient(senderClientId);
             bool matchCreated = TryInitializeMatch();
 
             if (matchCreated)
             {
-                BroadcastSnapshots();
+                BroadcastUpdate();
                 return;
             }
 
@@ -168,7 +197,81 @@ namespace KLTN.Game.Networking
                 return;
             }
 
-            SendSnapshot(senderClientId, viewerSeat);
+            SendUpdate(senderClientId, viewerSeat, null);
+        }
+
+        private void QueueSnapshotWhenVisible(ulong clientId)
+        {
+            if (!IsServer || !pendingSnapshotClients.Add(clientId)) { return; }
+
+            StartCoroutine(SendSnapshotWhenVisible(clientId));
+        }
+
+        private IEnumerator SendSnapshotWhenVisible(ulong clientId)
+        {
+            while (IsSpawned &&
+                NetworkManager != null &&
+                NetworkManager.IsListening &&
+                NetworkManager.ConnectedClients.ContainsKey(clientId) &&
+                !NetworkObject.IsNetworkVisibleTo(clientId))
+            {
+                yield return null;
+            }
+
+            pendingSnapshotClients.Remove(clientId);
+
+            if (!IsSpawned ||
+                NetworkManager == null ||
+                !NetworkManager.ConnectedClients.ContainsKey(clientId))
+            {
+                yield break;
+            }
+
+            if (!seatByClient.TryGetValue(clientId, out SeatId viewerSeat))
+            {
+                Debug.LogWarning($"Cannot send snapshot: client {clientId} has no seat.");
+                yield break;
+            }
+
+            Debug.Log($"NetworkMatchBridge is now visible to client {clientId}.");
+
+            SendUpdate(clientId, viewerSeat, null);
+        }
+
+        private IEnumerator RequestInitialSnapshot()
+        {
+            yield return null;
+
+            for (int attempt = 1;
+                attempt <= SnapshotRequestAttempts && !hasReceivedSnapshot;
+                attempt++)
+            {
+                if (!IsSpawned ||
+                    NetworkManager == null ||
+                    !NetworkManager.IsConnectedClient)
+                {
+                    yield break;
+                }
+
+                Debug.Log(
+                    $"Requesting initial snapshot. " +
+                    $"Attempt={attempt}/{SnapshotRequestAttempts}, " +
+                    $"ClientId={NetworkManager.LocalClientId}.");
+
+                RequestSnapshotRpc();
+
+                yield return new WaitForSecondsRealtime(
+                    SnapshotRequestIntervalSeconds);
+            }
+
+            initialSnapshotCoroutine = null;
+
+            if (!hasReceivedSnapshot)
+            {
+                Debug.LogError(
+                    $"Initial snapshot was not received after " +
+                    $"{SnapshotRequestAttempts} attempts.");
+            }
         }
 
         #endregion
@@ -230,6 +333,7 @@ namespace KLTN.Game.Networking
             matchState = factory.Create(definitions, DeckSize, OpeningHandSize, firstSeat);
             rulesEngine = new MatchRulesEngine(definitionsById);
             snapshotBuilder = new MatchSnapshotBuilder(definitionsById);
+            resolutionDtoMapper = new RoundResolutionDtoMapper(definitionsById);
 
             Debug.Log(
                 $"Match initialized. " +
@@ -241,32 +345,63 @@ namespace KLTN.Game.Networking
 
         #endregion
 
-        #region Snapshot Publication
+        #region Match Update Publication
 
-        private void BroadcastSnapshots()
+        private void BroadcastUpdate(RoundResolution resolution = null)
         {
             if (!IsServer) { return; }
 
             revision++;
 
+            RoundResolutionDto resolutionDto = resolution == null
+                ? null
+                : resolutionDtoMapper.Build(resolution, matchState);
+
             foreach (KeyValuePair<ulong, SeatId> pair in seatByClient)
             {
-                SendSnapshot(pair.Key, pair.Value);
+                SendUpdate(pair.Key, pair.Value, resolutionDto);
             }
         }
 
-        private void SendSnapshot(ulong targetClientId, SeatId viewerSeat)
-        {
-            MatchSnapshotDto snapshot = BuildSnapshot(viewerSeat);
-            string json = JsonUtility.ToJson(snapshot);
 
-            ReceiveSnapshotClientRpc(json, new ClientRpcParams
+        private void SendUpdate(
+            ulong targetClientId,
+            SeatId viewerSeat,
+            RoundResolutionDto resolution)
+        {
+            bool isVisible = NetworkObject.IsNetworkVisibleTo(targetClientId);
+
+            Debug.Log(
+                $"Preparing match update. Target={targetClientId}, " +
+                $"Viewer={viewerSeat}, Visible={isVisible}, Revision={revision}."
+            );
+
+            if (!isVisible)
             {
-                Send = new ClientRpcSendParams
-                {
-                    TargetClientIds = new[] { targetClientId }
-                }
-            });
+                QueueSnapshotWhenVisible(targetClientId);
+                return;
+            }
+
+            var update = new MatchUpdateDto
+            {
+                snapshot = BuildSnapshot(viewerSeat),
+                hasResolution = resolution != null,
+                resolution = resolution
+            };
+
+            string json = JsonUtility.ToJson(update);
+
+            Debug.Log(
+                $"Sending match update through Universal RPC. " +
+                $"Target={targetClientId}, JsonLength={json.Length}."
+            );
+
+            ReceiveMatchUpdateRpc(
+                json,
+                RpcTarget.Single(
+                    targetClientId,
+                    RpcTargetUse.Temp
+                ));
         }
 
         private MatchSnapshotDto BuildSnapshot(SeatId viewerSeat)
@@ -282,25 +417,35 @@ namespace KLTN.Game.Networking
             return snapshotBuilder.Build(matchState, viewerSeat, opponentConnected, revision);
         }
 
-        [ClientRpc]
-        private void ReceiveSnapshotClientRpc(string json, ClientRpcParams clientRpcParams = default)
+        [Rpc(
+            SendTo.SpecifiedInParams,
+            InvokePermission = RpcInvokePermission.Server)]
+        private void ReceiveMatchUpdateRpc(
+            string json,
+            RpcParams rpcParams = default)
         {
-            MatchSnapshotDto snapshot = JsonUtility.FromJson<MatchSnapshotDto>(json);
+            Debug.Log(
+                $"Universal match update arrived. " +
+                $"ClientId={NetworkManager.LocalClientId}, JsonLength={json?.Length ?? 0}.");
 
-            if (snapshot == null)
+            MatchUpdateDto update = JsonUtility.FromJson<MatchUpdateDto>(json);
+
+            if (update?.snapshot == null)
             {
-                Debug.LogWarning("Received an invalid match snapshot.");
+                Debug.LogWarning("Received an invalid match update.");
                 return;
             }
 
-            MatchProjectionRegistry.Current.Apply(snapshot);
+            hasReceivedSnapshot = true;
+            MatchUpdateInboxRegistry.Current.Enqueue(update);
 
             Debug.Log(
-                $"Received POV snapshot. " +
-                $"Viewer={snapshot.viewerSeat}, " +
-                $"Self={snapshot.self.seat}, " +
-                $"Opponent={snapshot.opponent.seat}, " +
-                $"Revision={snapshot.revision}");
+                $"Received match update. " +
+                $"Viewer={update.snapshot.viewerSeat}, " +
+                $"Self={update.snapshot.self.seat}, " +
+                $"Opponent={update.snapshot.opponent.seat}, " +
+                $"Revision={update.snapshot.revision}, " +
+                $"HasResolution={update.hasResolution}.");
         }
 
         #endregion
@@ -437,30 +582,34 @@ namespace KLTN.Game.Networking
                 return;
             }
 
-            BroadcastSnapshots();
+            BroadcastUpdate(result.Resolution);
         }
 
         #endregion
 
         #region Client Rejection Feedback
 
-        private void RejectCommand(ulong targetClientId, CommandRejectionReason reason)
+        private void RejectCommand(
+            ulong targetClientId,
+            CommandRejectionReason reason)
         {
-            ReceiveCommandRejectedClientRpc(
+            ReceiveCommandRejectedRpc(
                 (int)reason,
-                new ClientRpcParams
-                {
-                    Send = new ClientRpcSendParams
-                    {
-                        TargetClientIds = new[] { targetClientId }
-                    }
-                });
+                RpcTarget.Single(
+                    targetClientId,
+                    RpcTargetUse.Temp
+                ));
         }
 
-        [ClientRpc]
-        private void ReceiveCommandRejectedClientRpc(int reasonValue, ClientRpcParams clientRpcParams = default)
+        [Rpc(
+            SendTo.SpecifiedInParams,
+            InvokePermission = RpcInvokePermission.Server)]
+        private void ReceiveCommandRejectedRpc(
+            int reasonValue,
+            RpcParams rpcParams = default)
         {
             var reason = (CommandRejectionReason)reasonValue;
+
             MatchProjectionRegistry.Current.Reject(reason);
             Debug.LogWarning($"Match command rejected: {reason}.");
         }

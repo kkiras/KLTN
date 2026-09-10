@@ -40,6 +40,7 @@ namespace KLTN.Game.Domain.Tests
 
             CommandResult result = engine.TryPlayUnit(state, SeatId.Host, 1, 0);
 
+            Assert.IsNull(result.Resolution);
             Assert.IsTrue(result.Accepted);
             Assert.AreEqual(0, state.Host.Mana);
             Assert.AreEqual(0, state.Host.Hand.Count);
@@ -135,6 +136,64 @@ namespace KLTN.Game.Domain.Tests
             Assert.AreEqual(3, state.Host.Mana);
             Assert.AreEqual(hostHandBefore + 1, state.Host.Hand.Count);
             Assert.AreEqual(hostDeckBefore - 1, state.Host.Deck.Count);
+        }
+
+        [Test]
+        public void DifferentSlots_ProducesOrderedResolutionTranscript()
+        {
+            MatchState state = CreateState();
+
+            engine.TryPlayUnit(state, SeatId.Host, 1, 0);
+            CommandResult result =
+                engine.TryPlayUnit(state, SeatId.Guest, 10, 1);
+
+            Assert.IsTrue(result.Accepted);
+            Assert.IsNotNull(result.Resolution);
+            Assert.AreEqual(1, result.Resolution.RoundNumber);
+            Assert.AreEqual(2, result.Resolution.Steps.Count);
+
+            CombatStep firstStep = result.Resolution.Steps[0];
+
+            Assert.AreEqual(0, firstStep.SlotIndex);
+            Assert.IsNotNull(firstStep.HostCard);
+            Assert.IsNull(firstStep.GuestCard);
+            Assert.AreEqual(0, firstStep.HostNexusDamageTaken);
+            Assert.AreEqual(3, firstStep.GuestNexusDamageTaken);
+
+            CombatStep secondStep = result.Resolution.Steps[1];
+
+            Assert.AreEqual(1, secondStep.SlotIndex);
+            Assert.IsNull(secondStep.HostCard);
+            Assert.IsNotNull(secondStep.GuestCard);
+            Assert.AreEqual(2, secondStep.HostNexusDamageTaken);
+            Assert.AreEqual(0, secondStep.GuestNexusDamageTaken);
+        }
+
+        [Test]
+        public void SameSlot_ReportsActualDamageAndDeath()
+        {
+            MatchState state = CreateState();
+
+            engine.TryPlayUnit(state, SeatId.Host, 1, 0);
+            CommandResult result =
+                engine.TryPlayUnit(state, SeatId.Guest, 10, 0);
+
+            Assert.IsNotNull(result.Resolution);
+            Assert.AreEqual(1, result.Resolution.Steps.Count);
+
+            CombatStep step = result.Resolution.Steps[0];
+
+            Assert.IsTrue(step.IsUnitCombat);
+
+            Assert.AreEqual(4, step.HostCard.HealthBefore);
+            Assert.AreEqual(2, step.HostCard.HealthAfter);
+            Assert.AreEqual(2, step.HostCard.DamageTaken);
+            Assert.IsFalse(step.HostCard.Died);
+
+            Assert.AreEqual(2, step.GuestCard.HealthBefore);
+            Assert.AreEqual(0, step.GuestCard.HealthAfter);
+            Assert.AreEqual(2, step.GuestCard.DamageTaken);
+            Assert.IsTrue(step.GuestCard.Died);
         }
 
         #endregion

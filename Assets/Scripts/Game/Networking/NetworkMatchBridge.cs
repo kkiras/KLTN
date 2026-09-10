@@ -328,6 +328,13 @@ namespace KLTN.Game.Networking
             SubmitPassRpc(nextLocalCommandId++);
             return true;
         }
+        public bool RequestMulligan(ulong[] cardIdsToReplace)
+        {
+            if (!IsSpawned || !IsClient) { return false; }
+
+            SubmitMulliganRpc(nextLocalCommandId++, cardIdsToReplace);
+            return true;
+        }
 
         #endregion
 
@@ -361,6 +368,36 @@ namespace KLTN.Game.Networking
 
             CommandResult result = rulesEngine.TryPass(matchState, actor);
             FinishCommand(senderClientId, result);
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void SubmitMulliganRpc(ulong commandId, ulong[] cardIdsToReplace, RpcParams rpcParams = default)
+        {
+            ulong senderClientId = rpcParams.Receive.SenderClientId;
+
+            if (!TryBeginCommand(senderClientId, commandId, out SeatId actor)) { return; }
+
+            PlayerState player = matchState.Player(actor);
+
+            if (cardIdsToReplace != null && cardIdsToReplace.Length > 0)
+            {
+                System.Random rng = new System.Random();
+                player.PerformMulligan(cardIdsToReplace, rng);
+            }
+
+            if (actor == SeatId.Host)
+                matchState.HostMulliganDone = true;
+            else
+                matchState.GuestMulliganDone = true;
+
+            if (matchState.IsMulliganPhaseComplete && matchState.RoundNumber == 0)
+            {
+                matchState.RoundNumber = 1;
+                matchState.LastEvent = "Giai đoạn đổi bài kết thúc. Trận đấu bắt đầu!";
+
+            }
+
+            FinishCommand(senderClientId, CommandResult.Success());
         }
 
         private bool TryBeginCommand(ulong senderClientId, ulong commandId, out SeatId actor)
@@ -415,7 +452,9 @@ namespace KLTN.Game.Networking
                 {
                     Send = new ClientRpcSendParams
                     {
-                        TargetClientIds = new[] { targetClientId } } });
+                        TargetClientIds = new[] { targetClientId }
+                    }
+                });
         }
 
         [ClientRpc]

@@ -81,6 +81,7 @@ public class MulliganPresenter : MonoBehaviour
         else if (snapshot.roundNumber > 0)
         {
             actionButton.onClick.RemoveListener(OnConfirmClicked);
+            actionButton.interactable = true;
             gameObject.SetActive(false);
         }
     }

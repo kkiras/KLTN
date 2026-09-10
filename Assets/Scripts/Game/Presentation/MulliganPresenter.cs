@@ -1,119 +1,163 @@
 using System.Collections.Generic;
+using KLTN.Game.Content;
+using KLTN.Game.Networking;
+using KLTN.Game.Presentation;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
-using KLTN.Game.Networking;
-using KLTN.Game.Content;
-using KLTN.Game.Presentation;
-using CMCMProductions;
 
 public class MulliganPresenter : MonoBehaviour
 {
+    #region Serialized Fields
+
     [Header("UI References")]
-    public Transform cardsContainer;
-    public GameObject networkCardPrefab;
+    [SerializeField] private Transform cardsContainer;
+    [SerializeField] private GameObject networkCardPrefab;
+    [SerializeField] private CardPresentationCatalog presentationCatalog;
 
     [Header("Action Button Override")]
-    public Button actionButton;
-    public TextMeshProUGUI actionButtonText;
+    [SerializeField] private Button actionButton;
+    [SerializeField] private TextMeshProUGUI actionButtonText;
 
-    private List<ulong> selectedToReplace = new List<ulong>();
-    private bool hasConfirmed = false;
-    private CardAssetCatalog catalog;
+    #endregion
 
-    private void Awake()
+    #region Runtime State
+
+    private readonly List<ulong> selectedToReplace = new List<ulong>();
+    private bool hasConfirmed;
+
+    #endregion
+
+    #region Unity Lifecycle
+
+    private void OnDisable()
     {
-        catalog = new CardAssetCatalog();
+        if (actionButton != null) { actionButton.onClick.RemoveListener(OnConfirmClicked); }
     }
+
+    #endregion
+
+    #region Mulligan Rendering
 
     public void UpdateMulliganState(MatchSnapshotDto snapshot)
     {
+        if (snapshot == null) { return; }
+
         if (snapshot.roundNumber == 0 && !hasConfirmed)
         {
             gameObject.SetActive(true);
-            actionButtonText.text = "XÁC NHẬN";
 
-            actionButton.onClick.RemoveListener(OnConfirmClicked);
-            actionButton.onClick.AddListener(OnConfirmClicked);
-            actionButton.interactable = true;
+            if (actionButtonText != null) { actionButtonText.text = "XÁC NHẬN"; }
 
-            if (cardsContainer.childCount == 0)
+            if (actionButton != null)
             {
-                foreach (var cardDto in snapshot.self.hand)
-                {
-                    GameObject cardObj = Instantiate(networkCardPrefab, cardsContainer);
+                actionButton.onClick.RemoveListener(OnConfirmClicked);
+                actionButton.onClick.AddListener(OnConfirmClicked);
+                actionButton.interactable = true;
+            }
 
-                    var visual = cardObj.GetComponent<NetworkCardVisual>();
-                    if (visual != null)
-                    {
-                        var layout = cardObj.GetComponent<CardVisualLayout>();
-                        if (layout != null) layout.Apply(CardVisualLocation.Hand);
-
-                        Card asset = catalog.Find(cardDto.definitionId);
-
-                        if (asset != null)
-                        {
-                            visual.BindFaceUp(cardDto, asset);
-                        }
-                        else
-                        {
-                            Debug.LogWarning($"[Mulligan] Không tìm thấy dữ liệu cho lá bài: {cardDto.definitionId}");
-                        }
-                    }
-
-                    var dragScript = cardObj.GetComponent<DraggableHandCard>();
-                    if (dragScript != null)
-                    {
-                        Destroy(dragScript);
-                    }
-
-                    var toggle = cardObj.AddComponent<MulliganCardToggle>();
-                    if (ulong.TryParse(cardDto.instanceId, out ulong id))
-                    {
-                        toggle.cardInstanceId = id;
-                    }
-
-                    Transform overlayTran = cardObj.transform.Find("ReplaceOverlay") ?? cardObj.transform.Find("VisualRoot/ReplaceOverlay");
-                    if (overlayTran != null) toggle.replaceOverlay = overlayTran.GetComponent<Image>();
-                }
+            if (cardsContainer != null && cardsContainer.childCount == 0)
+            {
+                RenderOpeningHand(snapshot);
             }
         }
         else if (snapshot.roundNumber > 0)
         {
-            actionButton.onClick.RemoveListener(OnConfirmClicked);
-            actionButton.interactable = true;
+            if (actionButton != null)
+            {
+                actionButton.onClick.RemoveListener(OnConfirmClicked);
+                actionButton.interactable = true;
+            }
+
             gameObject.SetActive(false);
         }
     }
 
+    private void RenderOpeningHand(MatchSnapshotDto snapshot)
+    {
+        if (snapshot.self?.hand == null || networkCardPrefab == null) { return; }
+
+        foreach (CardViewDto cardDto in snapshot.self.hand)
+        {
+            GameObject cardObject = Instantiate(networkCardPrefab, cardsContainer);
+            NetworkCardVisual visual = cardObject.GetComponent<NetworkCardVisual>();
+
+            if (visual != null)
+            {
+                CardVisualLayout layout = cardObject.GetComponent<CardVisualLayout>();
+
+                if (layout != null) { layout.Apply(CardVisualLocation.Hand); }
+
+                CardArtworkView artworkPrefab = presentationCatalog != null
+                    ? presentationCatalog.Find(cardDto.definitionId)
+                    : null;
+
+                visual.BindFaceUp(cardDto, artworkPrefab);
+
+                if (artworkPrefab == null)
+                {
+                    Debug.LogWarning(
+                        $"[Mulligan] Không tìm thấy artwork prefab cho lá bài: {cardDto.definitionId}",
+                        this
+                    );
+                }
+            }
+
+            DraggableHandCard dragScript = cardObject.GetComponent<DraggableHandCard>();
+
+            if (dragScript != null) { Destroy(dragScript); }
+
+            MulliganCardToggle toggle = cardObject.GetComponent<MulliganCardToggle>();
+
+            if (toggle == null) { toggle = cardObject.AddComponent<MulliganCardToggle>(); }
+            if (ulong.TryParse(cardDto.instanceId, out ulong id)) { toggle.cardInstanceId = id; }
+
+            Transform overlayTransform =
+                cardObject.transform.Find("ReplaceOverlay") ??
+                cardObject.transform.Find("VisualRoot/ReplaceOverlay");
+
+            if (overlayTransform != null) { toggle.replaceOverlay = overlayTransform.GetComponent<Image>(); }
+        }
+    }
+
+    #endregion
+
+    #region Confirmation
+
     private void OnConfirmClicked()
     {
-        if (hasConfirmed) return;
+        if (hasConfirmed) { return; }
 
         selectedToReplace.Clear();
+
         foreach (Transform child in cardsContainer)
         {
-            var toggle = child.GetComponent<MulliganCardToggle>();
-            if (toggle != null && toggle.isSelected)
-            {
-                selectedToReplace.Add(toggle.cardInstanceId);
-            }
+            MulliganCardToggle toggle = child.GetComponent<MulliganCardToggle>();
+
+            if (toggle != null && toggle.isSelected) { selectedToReplace.Add(toggle.cardInstanceId); }
         }
 
-        Debug.Log("Số lượng bài muốn đổi: " + selectedToReplace.Count);
+        Debug.Log($"Số lượng bài muốn đổi: {selectedToReplace.Count}");
 
-        var networkBridge = FindAnyObjectByType<NetworkMatchBridge>();
-        if (networkBridge != null)
+        NetworkMatchBridge networkBridge = FindAnyObjectByType<NetworkMatchBridge>();
+
+        if (networkBridge == null)
         {
-            networkBridge.RequestMulligan(selectedToReplace.ToArray());
+            Debug.LogError("Không tìm thấy NetworkMatchBridge để gửi lệnh!", this);
+            return;
         }
-        else
+
+        if (!networkBridge.RequestMulligan(selectedToReplace.ToArray()))
         {
-            Debug.LogError("Không tìm thấy NetworkMatchBridge để gửi lệnh!");
+            Debug.LogWarning("Không thể gửi yêu cầu đổi bài.", this);
+            return;
         }
 
         hasConfirmed = true;
-        actionButtonText.text = "ĐANG CHỜ...";
-        actionButton.interactable = false;
+
+        if (actionButtonText != null) { actionButtonText.text = "ĐANG CHỜ..."; }
+        if (actionButton != null) { actionButton.interactable = false; }
     }
+
+    #endregion
 }

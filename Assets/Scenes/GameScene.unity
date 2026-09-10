@@ -233,6 +233,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MulliganPresenter
   cardsContainer: {fileID: 17066477}
   networkCardPrefab: {fileID: 8477672883293305891, guid: c69e6023186abf741b99242a29336351, type: 3}
+  presentationCatalog: {fileID: 11400000, guid: fe3b600fb29f4474d8e8da0ba44a7d4e, type: 2}
   actionButton: {fileID: 2135423312}
   actionButtonText: {fileID: 160395354}
 --- !u!1 &47489265

@@ -2,10 +2,14 @@ using KLTN.Game.Networking;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System;
+using UnityEngine.EventSystems;
+using System.Collections.Generic;
+using KLTN.Game.Domain;
 
 namespace KLTN.Game.Presentation
 {
-    public sealed class NetworkCardVisual : MonoBehaviour
+    public sealed class NetworkCardVisual : MonoBehaviour, IPointerClickHandler
     {
         #region Serialized Fields
 
@@ -18,9 +22,11 @@ namespace KLTN.Game.Presentation
         [SerializeField] private TMP_Text costText;
         [SerializeField] private TMP_Text damageText;
         [SerializeField] private TMP_Text healthText;
+        [SerializeField] private TMP_Text keywordText;
 
         [Header("Visual State")]
         [SerializeField] private GameObject pendingOverlay;
+        [SerializeField] private Image abilityTargetOverlay;
         [SerializeField] private CanvasGroup canvasGroup;
 
         #endregion
@@ -29,13 +35,19 @@ namespace KLTN.Game.Presentation
 
         private CardArtworkView currentArtworkPrefab;
         private CardArtworkView spawnedArtwork;
+        private Action<string> abilityTargetClicked;
+        private int authoritativeDamage;
+        private int authoritativeHealth;
 
         #endregion
 
         #region Properties
 
         public string InstanceId { get; private set; }
+        public string DefinitionId { get; private set; }
         public int Energy { get; private set; }
+        public int SupportDamageBonus { get; private set; }
+        public int SupportHealthBonus { get; private set; }
 
         #endregion
 
@@ -44,7 +56,12 @@ namespace KLTN.Game.Presentation
         public void BindFaceUp(CardViewDto dto, CardArtworkView artworkPrefab)
         {
             InstanceId = dto.instanceId;
+            DefinitionId = dto.definitionId;
             Energy = dto.energy;
+            SupportDamageBonus = dto.supportDamageBonus;
+            SupportHealthBonus = dto.supportHealthBonus;
+            authoritativeDamage = dto.damage;
+            authoritativeHealth = dto.health;
 
             bool hasArtwork = artworkMount != null && artworkPrefab != null;
 
@@ -63,26 +80,25 @@ namespace KLTN.Game.Presentation
                 costText.gameObject.SetActive(true);
             }
 
-            if (damageText != null)
-            {
-                damageText.text = dto.damage.ToString();
-                damageText.gameObject.SetActive(true);
-            }
+            SetDisplayedStats(authoritativeDamage, authoritativeHealth);
 
-            if (healthText != null)
-            {
-                healthText.text = dto.health.ToString();
-                healthText.gameObject.SetActive(true);
-            }
+            SetKeywords(
+                (UnitKeyword)dto.keywords);
 
             SetPending(false);
+            ClearAbilityTargetState();
             SetInteractableVisual(true);
         }
 
         public void BindBack(Sprite cardBack)
         {
             InstanceId = null;
+            DefinitionId = null;
             Energy = 0;
+            SupportDamageBonus = 0;
+            SupportHealthBonus = 0;
+            authoritativeDamage = 0;
+            authoritativeHealth = 0;
 
             ClearFaceArtwork();
             SetCardBack(cardBack);
@@ -92,7 +108,10 @@ namespace KLTN.Game.Presentation
             SetTextActive(costText, false);
             SetTextActive(damageText, false);
             SetTextActive(healthText, false);
+            SetKeywords(
+                UnitKeyword.None);
             SetPending(false);
+            ClearAbilityTargetState();
             SetInteractableVisual(true);
         }
 
@@ -165,6 +184,67 @@ namespace KLTN.Game.Presentation
             if (pendingOverlay != null) { pendingOverlay.SetActive(value); }
         }
 
+        public void SetStatPreview(int damageBonus, int healthBonus)
+        {
+            SetDisplayedStats(
+                Math.Max(0, authoritativeDamage + damageBonus),
+                Math.Max(0, authoritativeHealth + healthBonus)
+            );
+        }
+
+        public void ClearStatPreview()
+        {
+            SetDisplayedStats(authoritativeDamage, authoritativeHealth);
+        }
+
+        public void SetAbilityTargetState(
+            Color color,
+            Action<string> clickHandler)
+        {
+            abilityTargetClicked =
+                clickHandler;
+
+            if (abilityTargetOverlay == null)
+            {
+                return;
+            }
+
+            abilityTargetOverlay.color =
+                color;
+
+            abilityTargetOverlay.raycastTarget =
+                false;
+
+            abilityTargetOverlay.gameObject
+                .SetActive(true);
+        }
+
+        public void ClearAbilityTargetState()
+        {
+            abilityTargetClicked = null;
+
+            if (abilityTargetOverlay != null)
+            {
+                abilityTargetOverlay.gameObject
+                    .SetActive(false);
+            }
+        }
+
+        public void OnPointerClick(
+            PointerEventData eventData)
+        {
+            if (eventData.button !=
+                    PointerEventData.InputButton.Left ||
+                string.IsNullOrWhiteSpace(InstanceId) ||
+                abilityTargetClicked == null)
+            {
+                return;
+            }
+
+            abilityTargetClicked.Invoke(
+                InstanceId);
+        }
+
         public void SetInteractableVisual(bool value)
         {
             if (canvasGroup != null) { canvasGroup.alpha = value ? 1f : 0.55f; }
@@ -179,6 +259,63 @@ namespace KLTN.Game.Presentation
             if (label != null) { label.gameObject.SetActive(value); }
         }
 
+        private void SetDisplayedStats(int damage, int health)
+        {
+            if (damageText != null)
+            {
+                damageText.text = damage.ToString();
+                damageText.gameObject.SetActive(true);
+            }
+
+            if (healthText != null)
+            {
+                healthText.text = health.ToString();
+                healthText.gameObject.SetActive(true);
+            }
+        }
+
         #endregion
+
+        private void SetKeywords(
+            UnitKeyword keywords)
+        {
+            if (keywordText == null)
+            {
+                return;
+            }
+
+            var labels =
+                new List<string>();
+
+            if ((keywords &
+                UnitKeyword.Fearsome) != 0)
+            {
+                labels.Add("F");
+            }
+
+            if ((keywords &
+                UnitKeyword.CannotBlock) != 0)
+            {
+                labels.Add("CB");
+            }
+
+            if ((keywords &
+                UnitKeyword.Ephemeral) != 0)
+            {
+                labels.Add("E");
+            }
+
+            if ((keywords &
+                UnitKeyword.Lifesteal) != 0)
+            {
+                labels.Add("L");
+            }
+
+            keywordText.text =
+                string.Join("  ", labels);
+
+            keywordText.gameObject.SetActive(
+                labels.Count > 0);
+        }
     }
 }

@@ -68,13 +68,25 @@ namespace KLTN.Game.Presentation
                 $"Opponent revealed cards: {revealedOpponentCards}\n" +
                 $"Opponent deck: {snapshot.opponent.deckCount}\n\n" +
 
+                $"Self reserve: {CardListText(snapshot.self.reserve)}\n" +
+                $"Self active roster: {snapshot.self.activeRosterCount}/4\n" +
+                $"Opponent reserve: {CardListText(snapshot.opponent.reserve)}\n" +
+                $"Opponent active roster: {snapshot.opponent.activeRosterCount}/4\n\n" +
+                $"Can declare attack: {snapshot.viewerCanDeclareAttack}\n" +
+                $"Can declare block: {snapshot.viewerCanDeclareBlock}\n" +
+
                 $"Revision: {snapshot.revision}\n" +
 
                 $"Round: {snapshot.roundNumber}\n" +
+                $"Phase: {(MatchPhase)snapshot.phase}\n" +
 
                 $"First: {(SeatId)snapshot.firstSeat}\n" +
                 $"Active: {(SeatId)snapshot.activeSeat}\n" +
+                $"Attack token: {(SeatId)snapshot.attackTokenOwner}\n" +
+                $"Token available: {snapshot.attackTokenAvailable}\n" +
+                $"Consecutive passes: {snapshot.consecutivePasses}\n" +
                 $"Can act: {snapshot.viewerCanAct}\n" +
+                $"Can end round: {snapshot.viewerCanEndRound}\n" +
                 $"Outcome: {(MatchOutcome)snapshot.outcome}\n\n" +
 
                 $"Self board: {BoardText(snapshot.self.board)}\n" +
@@ -104,6 +116,31 @@ namespace KLTN.Game.Presentation
 
                 parts[i] =
                     $"[{card.boardSlotIndex + 1}] " +
+                    $"{card.displayName} " +
+                    $"{card.damage}/{card.health}";
+            }
+
+            return string.Join(", ", parts);
+        }
+
+        private static string CardListText(
+            CardViewDto[] cards)
+        {
+            if (cards == null ||
+                cards.Length == 0)
+            {
+                return "trống";
+            }
+
+            var parts = new string[cards.Length];
+
+            for (int i = 0;
+                i < cards.Length;
+                i++)
+            {
+                CardViewDto card = cards[i];
+
+                parts[i] =
                     $"{card.displayName} " +
                     $"{card.damage}/{card.health}";
             }

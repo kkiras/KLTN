@@ -13,6 +13,51 @@ MonoBehaviour:
   m_Name: ThanTrung
   m_EditorClassIdentifier: Assembly-CSharp::CMCMProductions.Card
   cardName: "Th\u1EA7n Tr\xF9ng"
+  rulesText: "\u0110\xE1ng s\u1EE3. Play: ch\u1ECDn m\u1ED9t \u0111\u1ED3ng minh
+    v\xE0 m\u1ED9t k\u1EBB \u0111\u1ECBch; sau khi c\u1EA3 hai target h\u1EE3p l\u1EC7,
+    gi\u1EBFt c\u1EA3 hai."
+  cardType: 
   health: 3
   damage: 5
   energy: 6
+  keywords: 1
+  abilities:
+  - abilityId: than_trung_play
+    trigger: 0
+    condition: 0
+    oncePerRound: 0
+    oncePerMatch: 0
+    missingTargetPolicy: 0
+    requiredTargets:
+    - slot: 0
+      relation: 0
+      zones: 6
+      count: 1
+      excludeSource: 1
+    - slot: 1
+      relation: 1
+      zones: 6
+      count: 1
+      excludeSource: 1
+    effects:
+    - kind: 2
+      target: 4
+      amount: 0
+      secondaryAmount: 0
+      count: 1
+      duration: 0
+      cardDefinitionId: 
+    - kind: 2
+      target: 5
+      amount: 0
+      secondaryAmount: 0
+      count: 1
+      duration: 0
+      cardDefinitionId: 
+  passiveRules:
+    costReductionPerAlliedDeathThisGame: 0
+    revivesAtRoundStart: 0
+    powerAndHealthPerDeath: 0
+    joinsAttackFromGraveyard: 0
+    requiresEphemeralAttacker: 0
+  maximumCopiesPerDeck: 0

@@ -13,6 +13,33 @@ MonoBehaviour:
   m_Name: MaTranh
   m_EditorClassIdentifier: Assembly-CSharp::CMCMProductions.Card
   cardName: "Ma Tr\xE0nh"
+  rulesText: "\u0110\xE1ng s\u1EE3. Play: n\u1EBFu m\u1ED9t \u0111\u1ED3ng minh \u0111\xE3
+    ch\u1EBFt trong v\xF2ng n\xE0y, gi\u1EBFt 2 k\u1EBB \u0111\u1ECBch y\u1EBFu nh\u1EA5t."
+  cardType: 
   health: 6
   damage: 8
   energy: 8
+  keywords: 1
+  abilities:
+  - abilityId: ma_tranh_play
+    trigger: 0
+    condition: 1
+    oncePerRound: 0
+    oncePerMatch: 0
+    missingTargetPolicy: 0
+    requiredTargets: []
+    effects:
+    - kind: 2
+      target: 10
+      amount: 0
+      secondaryAmount: 0
+      count: 2
+      duration: 0
+      cardDefinitionId: 
+  passiveRules:
+    costReductionPerAlliedDeathThisGame: 0
+    revivesAtRoundStart: 0
+    powerAndHealthPerDeath: 0
+    joinsAttackFromGraveyard: 0
+    requiresEphemeralAttacker: 0
+  maximumCopiesPerDeck: 0

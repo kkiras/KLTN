@@ -9,11 +9,15 @@ namespace KLTN.Game.Domain
 
         public SeatId Seat { get; }
         public ulong CardInstanceId { get; }
+
         public int HealthBefore { get; }
         public int HealthAfter { get; }
+        public int DamageBefore { get; }
+        public int DamageTaken { get; }
 
-        public int DamageTaken => Math.Max(0, HealthBefore - HealthAfter);
         public bool Died => HealthBefore > 0 && HealthAfter <= 0;
+
+        public bool DiedFromEphemeral { get; }
 
         #endregion
 
@@ -23,12 +27,22 @@ namespace KLTN.Game.Domain
             SeatId seat,
             ulong cardInstanceId,
             int healthBefore,
-            int healthAfter)
+            int healthAfter,
+            int damageBefore,
+            int damageTaken,
+            bool diedFromEphemeral
+        )
         {
             Seat = seat;
             CardInstanceId = cardInstanceId;
+
             HealthBefore = Math.Max(0, healthBefore);
             HealthAfter = Math.Max(0, healthAfter);
+
+            DamageBefore = Math.Max(0, damageBefore);
+            DamageTaken = Math.Max(0, damageTaken);
+
+            DiedFromEphemeral = diedFromEphemeral && Died;
         }
 
         #endregion
@@ -68,7 +82,8 @@ namespace KLTN.Game.Domain
             int hostNexusHealthBefore,
             int hostNexusHealthAfter,
             int guestNexusHealthBefore,
-            int guestNexusHealthAfter)
+            int guestNexusHealthAfter
+        )
         {
             SlotIndex = slotIndex;
             HostCard = hostCard;
@@ -97,7 +112,8 @@ namespace KLTN.Game.Domain
         {
             RoundNumber = roundNumber;
             Steps = new List<CombatStep>(
-                steps ?? throw new ArgumentNullException(nameof(steps)));
+                steps ?? throw new ArgumentNullException(nameof(steps))
+            );
         }
 
         #endregion

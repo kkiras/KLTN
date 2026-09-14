@@ -6,7 +6,9 @@ namespace KLTN.Game.Presentation
     public enum CardVisualLocation
     {
         Hand,
+        Reserve,
         Board,
+        AbilitySelection,
     }
 
     [DisallowMultipleComponent]
@@ -17,14 +19,24 @@ namespace KLTN.Game.Presentation
         #region Configuration
 
         [Header("Design")]
-        [SerializeField] private RectTransform visualRoot;
+        [SerializeField]
+        private RectTransform visualRoot;
 
-        [SerializeField] private Vector2 designSize = new Vector2(240f, 320f);
+        [SerializeField]
+        private Vector2 designSize = new Vector2(240f, 320f);
 
         [Header("Rendered Sizes")]
-        [SerializeField] private Vector2 handSize = new Vector2(150f, 200f);
+        [SerializeField]
+        private Vector2 handSize = new Vector2(150f, 210f);
 
-        [SerializeField] private Vector2 boardSize = new Vector2(240f, 320f);
+        [SerializeField]
+        private Vector2 reserveSize = new Vector2(150f, 210f);
+
+        [SerializeField]
+        private Vector2 boardSize = new Vector2(250f, 350f);
+
+        [SerializeField]
+        private Vector2 abilitySelectionSize = new Vector2(200f, 280f);
 
         #endregion
 
@@ -53,9 +65,15 @@ namespace KLTN.Game.Presentation
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            if (designSize.x <= 0f) { designSize.x = 240f; }
+            if (designSize.x <= 0f)
+            {
+                designSize.x = 240f;
+            }
 
-            if (designSize.y <= 0f) { designSize.y = 320f; }
+            if (designSize.y <= 0f)
+            {
+                designSize.y = 320f;
+            }
         }
 #endif
 
@@ -70,7 +88,9 @@ namespace KLTN.Game.Presentation
             Vector2 targetSize = location switch
             {
                 CardVisualLocation.Hand => handSize,
+                CardVisualLocation.Reserve => reserveSize,
                 CardVisualLocation.Board => boardSize,
+                CardVisualLocation.AbilitySelection => abilitySelectionSize,
                 _ => boardSize,
             };
             ApplyRootSize(targetSize);
@@ -88,8 +108,14 @@ namespace KLTN.Game.Presentation
             layoutElement.preferredHeight = targetSize.y;
             layoutElement.flexibleWidth = 0f;
             layoutElement.flexibleHeight = 0f;
-            rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, targetSize.x);
-            rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, targetSize.y);
+            rectTransform.SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Horizontal,
+                targetSize.x
+            );
+            rectTransform.SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Vertical,
+                targetSize.y
+            );
 
             // The layout root always remains unscaled.
             rectTransform.localScale = Vector3.one;
@@ -101,19 +127,31 @@ namespace KLTN.Game.Presentation
 
         private void ConfigureVisualRoot()
         {
-            if (visualRoot == null) { return; }
+            if (visualRoot == null)
+            {
+                return;
+            }
 
             visualRoot.anchorMin = new Vector2(0.5f, 0.5f);
             visualRoot.anchorMax = new Vector2(0.5f, 0.5f);
             visualRoot.pivot = new Vector2(0.5f, 0.5f);
             visualRoot.anchoredPosition = Vector2.zero;
-            visualRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, designSize.x);
-            visualRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, designSize.y);
+            visualRoot.SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Horizontal,
+                designSize.x
+            );
+            visualRoot.SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Vertical,
+                designSize.y
+            );
         }
 
         private void ApplyVisualScale(Vector2 targetSize)
         {
-            if (visualRoot == null) { return; }
+            if (visualRoot == null)
+            {
+                return;
+            }
 
             ConfigureVisualRoot();
             float widthScale = targetSize.x / designSize.x;
@@ -130,7 +168,10 @@ namespace KLTN.Game.Presentation
 
         private void RebuildParentLayout()
         {
-            if (rectTransform.parent is RectTransform parent) { LayoutRebuilder.MarkLayoutForRebuild(parent); }
+            if (rectTransform.parent is RectTransform parent)
+            {
+                LayoutRebuilder.MarkLayoutForRebuild(parent);
+            }
         }
 
         #endregion

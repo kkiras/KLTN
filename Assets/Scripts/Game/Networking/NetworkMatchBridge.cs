@@ -1,10 +1,11 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using CMCMProductions;
+using KLTN.Game.Content;
 using KLTN.Game.Domain;
 using Unity.Netcode;
 using UnityEngine;
-using System.Collections;
 
 namespace KLTN.Game.Networking
 {
@@ -22,9 +23,12 @@ namespace KLTN.Game.Networking
 
         #region Server State
 
-        private readonly Dictionary<ulong, SeatId> seatByClient = new Dictionary<ulong, SeatId>();
-        private readonly Dictionary<string, CardDefinition> definitionsById = new Dictionary<string, CardDefinition>();
-        private readonly Dictionary<ulong, ulong> lastCommandIdByClient = new Dictionary<ulong, ulong>();
+        private readonly Dictionary<ulong, SeatId> seatByClient =
+            new Dictionary<ulong, SeatId>();
+        private readonly Dictionary<string, CardDefinition> definitionsById =
+            new Dictionary<string, CardDefinition>();
+        private readonly Dictionary<ulong, ulong> lastCommandIdByClient =
+            new Dictionary<ulong, ulong>();
         private readonly HashSet<ulong> pendingSnapshotClients = new HashSet<ulong>();
         private ulong revision;
         private MatchState matchState;
@@ -64,10 +68,11 @@ namespace KLTN.Game.Networking
             }
 
             Debug.Log(
-                $"NetworkMatchBridge spawned. " +
-                $"ClientId={NetworkManager.LocalClientId}, " +
-                $"IsServer={IsServer}, IsClient={IsClient}, " +
-                $"NetworkObjectId={NetworkObjectId}.");
+                $"NetworkMatchBridge spawned. "
+                    + $"ClientId={NetworkManager.LocalClientId}, "
+                    + $"IsServer={IsServer}, IsClient={IsClient}, "
+                    + $"NetworkObjectId={NetworkObjectId}."
+            );
         }
 
         public override void OnNetworkDespawn()
@@ -95,7 +100,10 @@ namespace KLTN.Game.Networking
 
         private void OnClientConnected(ulong clientId)
         {
-            if (!IsServer) { return; }
+            if (!IsServer)
+            {
+                return;
+            }
 
             AssignClient(clientId);
             TryInitializeMatch();
@@ -104,9 +112,15 @@ namespace KLTN.Game.Networking
 
         private void OnClientDisconnected(ulong clientId)
         {
-            if (!IsServer) { return; }
+            if (!IsServer)
+            {
+                return;
+            }
 
-            if (!seatByClient.Remove(clientId)) { return; }
+            if (!seatByClient.Remove(clientId))
+            {
+                return;
+            }
             lastCommandIdByClient.Remove(clientId);
             Debug.Log($"Removed seat assignment for client {clientId}.");
             matchState = null;
@@ -119,10 +133,12 @@ namespace KLTN.Game.Networking
 
         private void AssignConnectedClients()
         {
-            if (NetworkManager.IsHost) { AssignClientToSeat(NetworkManager.LocalClientId, SeatId.Host); }
+            if (NetworkManager.IsHost)
+            {
+                AssignClientToSeat(NetworkManager.LocalClientId, SeatId.Host);
+            }
 
-            foreach (ulong clientId in
-                    NetworkManager.ConnectedClientsIds)
+            foreach (ulong clientId in NetworkManager.ConnectedClientsIds)
             {
                 AssignClient(clientId);
             }
@@ -130,7 +146,10 @@ namespace KLTN.Game.Networking
 
         private void AssignClient(ulong clientId)
         {
-            if (seatByClient.ContainsKey(clientId)) { return; }
+            if (seatByClient.ContainsKey(clientId))
+            {
+                return;
+            }
 
             if (!HasSeat(SeatId.Host))
             {
@@ -144,13 +163,14 @@ namespace KLTN.Game.Networking
                 return;
             }
 
-            Debug.LogWarning($"Client {clientId} could not be assigned. " + "Both seats are occupied.");
+            Debug.LogWarning(
+                $"Client {clientId} could not be assigned. " + "Both seats are occupied."
+            );
         }
 
         private void AssignClientToSeat(ulong clientId, SeatId seat)
         {
-            if (seatByClient.ContainsKey(clientId) ||
-                HasSeat(seat))
+            if (seatByClient.ContainsKey(clientId) || HasSeat(seat))
             {
                 return;
             }
@@ -163,7 +183,10 @@ namespace KLTN.Game.Networking
         {
             foreach (SeatId assignedSeat in seatByClient.Values)
             {
-                if (assignedSeat == seat) { return true; }
+                if (assignedSeat == seat)
+                {
+                    return true;
+                }
             }
 
             return false;
@@ -200,27 +223,34 @@ namespace KLTN.Game.Networking
 
         private void QueueSnapshotWhenVisible(ulong clientId)
         {
-            if (!IsServer || !pendingSnapshotClients.Add(clientId)) { return; }
+            if (!IsServer || !pendingSnapshotClients.Add(clientId))
+            {
+                return;
+            }
 
             StartCoroutine(SendSnapshotWhenVisible(clientId));
         }
 
         private IEnumerator SendSnapshotWhenVisible(ulong clientId)
         {
-            while (IsSpawned &&
-                NetworkManager != null &&
-                NetworkManager.IsListening &&
-                NetworkManager.ConnectedClients.ContainsKey(clientId) &&
-                !NetworkObject.IsNetworkVisibleTo(clientId))
+            while (
+                IsSpawned
+                && NetworkManager != null
+                && NetworkManager.IsListening
+                && NetworkManager.ConnectedClients.ContainsKey(clientId)
+                && !NetworkObject.IsNetworkVisibleTo(clientId)
+            )
             {
                 yield return null;
             }
 
             pendingSnapshotClients.Remove(clientId);
 
-            if (!IsSpawned ||
-                NetworkManager == null ||
-                !NetworkManager.ConnectedClients.ContainsKey(clientId))
+            if (
+                !IsSpawned
+                || NetworkManager == null
+                || !NetworkManager.ConnectedClients.ContainsKey(clientId)
+            )
             {
                 yield break;
             }
@@ -240,26 +270,30 @@ namespace KLTN.Game.Networking
         {
             yield return null;
 
-            for (int attempt = 1;
+            for (
+                int attempt = 1;
                 attempt <= SnapshotRequestAttempts && !hasReceivedSnapshot;
-                attempt++)
+                attempt++
+            )
             {
-                if (!IsSpawned ||
-                    NetworkManager == null ||
-                    !NetworkManager.IsConnectedClient)
+                if (
+                    !IsSpawned
+                    || NetworkManager == null
+                    || !NetworkManager.IsConnectedClient
+                )
                 {
                     yield break;
                 }
 
                 Debug.Log(
-                    $"Requesting initial snapshot. " +
-                    $"Attempt={attempt}/{SnapshotRequestAttempts}, " +
-                    $"ClientId={NetworkManager.LocalClientId}.");
+                    $"Requesting initial snapshot. "
+                        + $"Attempt={attempt}/{SnapshotRequestAttempts}, "
+                        + $"ClientId={NetworkManager.LocalClientId}."
+                );
 
                 RequestSnapshotRpc();
 
-                yield return new WaitForSecondsRealtime(
-                    SnapshotRequestIntervalSeconds);
+                yield return new WaitForSecondsRealtime(SnapshotRequestIntervalSeconds);
             }
 
             initialSnapshotCoroutine = null;
@@ -267,8 +301,9 @@ namespace KLTN.Game.Networking
             if (!hasReceivedSnapshot)
             {
                 Debug.LogError(
-                    $"Initial snapshot was not received after " +
-                    $"{SnapshotRequestAttempts} attempts.");
+                    $"Initial snapshot was not received after "
+                        + $"{SnapshotRequestAttempts} attempts."
+                );
             }
         }
 
@@ -278,100 +313,149 @@ namespace KLTN.Game.Networking
 
         private bool TryInitializeMatch()
         {
-            if (matchState != null) { return false; }
+            if (matchState != null)
+            {
+                return false;
+            }
 
-            if (!HasSeat(SeatId.Host) || !HasSeat(SeatId.Guest)) { return false; }
+            if (!HasSeat(SeatId.Host) || !HasSeat(SeatId.Guest))
+            {
+                return false;
+            }
 
             Card[] cardAssets = Resources.LoadAll<Card>("Cards");
 
             if (cardAssets == null || cardAssets.Length == 0)
             {
                 Debug.LogError("No Card assets were found in Resources/Cards.");
+
                 return false;
             }
 
             definitionsById.Clear();
-            var definitions = new List<CardDefinition>();
 
-            foreach (Card cardAsset in cardAssets)
+            try
             {
-                if (cardAsset == null) { continue; }
+                var definitions = new List<CardDefinition>();
 
-                // The asset name is the stable runtime definition ID.
-                string definitionId = cardAsset.name;
-
-                if (definitionsById.ContainsKey(definitionId))
+                foreach (Card cardAsset in cardAssets)
                 {
-                    Debug.LogWarning($"Duplicate card definition ID: {definitionId}");
-                    continue;
+                    if (cardAsset == null)
+                    {
+                        continue;
+                    }
+
+                    CardDefinition definition = CardDefinitionMapper.Create(cardAsset);
+
+                    if (definitionsById.ContainsKey(definition.Id))
+                    {
+                        throw new InvalidOperationException(
+                            $"Duplicate card definition ID: {definition.Id}"
+                        );
+                    }
+
+                    definitionsById.Add(definition.Id, definition);
+
+                    definitions.Add(definition);
                 }
 
-                var definition = new CardDefinition(
-                    definitionId,
-                    cardAsset.cardName,
-                    cardAsset.health,
-                    cardAsset.damage,
-                    cardAsset.energy);
-                definitionsById.Add(definitionId, definition);
-                definitions.Add(definition);
-            }
+                CardContentValidator.Validate(definitions);
 
-            if (definitions.Count == 0)
+                definitions.Sort(
+                    (left, right) => StringComparer.Ordinal.Compare(left.Id, right.Id)
+                );
+
+                IReadOnlyList<CardDefinition> defaultDeck = DefaultDeckBuilder.Build(
+                    definitions
+                );
+
+                IRandomSource random = new SeededRandomSource(Environment.TickCount);
+
+                SeatId firstSeat = random.Next(0, 2) == 0 ? SeatId.Host : SeatId.Guest;
+
+                var factory = new MatchFactory(random);
+
+                matchState = factory.Create(
+                    defaultDeck,
+                    defaultDeck,
+                    OpeningHandSize,
+                    firstSeat
+                );
+
+                rulesEngine = new MatchRulesEngine(definitionsById, random);
+
+                snapshotBuilder = new MatchSnapshotBuilder(definitionsById);
+
+                resolutionDtoMapper = new RoundResolutionDtoMapper(definitionsById);
+
+                Debug.Log(
+                    $"Match initialized. "
+                        + $"First seat: {matchState.FirstSeat}. "
+                        + $"Deck size: {DeckRules.RequiredCardCount}. "
+                        + $"Host hand: {matchState.Host.DrawHand.Count}, "
+                        + $"Guest hand: {matchState.Guest.DrawHand.Count}."
+                );
+
+                return true;
+            }
+            catch (Exception exception)
             {
-                Debug.LogError("No valid card definitions could be loaded.");
+                matchState = null;
+                rulesEngine = null;
+                snapshotBuilder = null;
+                resolutionDtoMapper = null;
+
+                definitionsById.Clear();
+
+                Debug.LogError("Match initialization failed: " + exception.Message);
+
                 return false;
             }
-
-            IRandomSource random = new SeededRandomSource(Environment.TickCount);
-
-            SeatId firstSeat = random.Next(0, 2) == 0
-                ? SeatId.Host
-                : SeatId.Guest;
-            var factory = new MatchFactory(random);
-            matchState = factory.Create(definitions, DeckSize, OpeningHandSize, firstSeat);
-            rulesEngine = new MatchRulesEngine(definitionsById);
-            snapshotBuilder = new MatchSnapshotBuilder(definitionsById);
-            resolutionDtoMapper = new RoundResolutionDtoMapper(definitionsById);
-
-            Debug.Log(
-                $"Match initialized. " +
-                $"First seat: {matchState.FirstSeat}. " +
-                $"Host hand: {matchState.Host.Hand.Count}, " +
-                $"Guest hand: {matchState.Guest.Hand.Count}.");
-            return true;
         }
 
         #endregion
 
         #region Match Update Publication
 
-        private void BroadcastUpdate(RoundResolution resolution = null)
+        private void BroadcastUpdate(
+            RoundResolution resolution = null,
+            RoundTransition roundTransition = null
+        )
         {
-            if (!IsServer) { return; }
+            if (!IsServer)
+            {
+                return;
+            }
 
             revision++;
 
-            RoundResolutionDto resolutionDto = resolution == null
-                ? null
-                : resolutionDtoMapper.Build(resolution, matchState);
+            RoundResolutionDto resolutionDto =
+                resolution == null
+                    ? null
+                    : resolutionDtoMapper.Build(resolution, matchState);
+
+            RoundTransitionDto roundTransitionDto = BuildRoundTransitionDto(
+                roundTransition
+            );
 
             foreach (KeyValuePair<ulong, SeatId> pair in seatByClient)
             {
-                SendUpdate(pair.Key, pair.Value, resolutionDto);
+                SendUpdate(pair.Key, pair.Value, resolutionDto, roundTransitionDto);
             }
         }
-
 
         private void SendUpdate(
             ulong targetClientId,
             SeatId viewerSeat,
-            RoundResolutionDto resolution)
+            RoundResolutionDto resolution,
+            RoundTransitionDto roundTransition = null
+        )
         {
             bool isVisible = NetworkObject.IsNetworkVisibleTo(targetClientId);
 
             Debug.Log(
-                $"Preparing match update. Target={targetClientId}, " +
-                $"Viewer={viewerSeat}, Visible={isVisible}, Revision={revision}."
+                $"Preparing match update. Target={targetClientId}, "
+                    + $"Viewer={viewerSeat}, Visible={isVisible}, Revision={revision}."
             );
 
             if (!isVisible)
@@ -383,23 +467,27 @@ namespace KLTN.Game.Networking
             var update = new MatchUpdateDto
             {
                 snapshot = BuildSnapshot(viewerSeat),
+
                 hasResolution = resolution != null,
-                resolution = resolution
+
+                resolution = resolution,
+
+                hasRoundTransition = roundTransition != null,
+
+                roundTransition = roundTransition,
             };
 
             string json = JsonUtility.ToJson(update);
 
             Debug.Log(
-                $"Sending match update through Universal RPC. " +
-                $"Target={targetClientId}, JsonLength={json.Length}."
+                $"Sending match update through Universal RPC. "
+                    + $"Target={targetClientId}, JsonLength={json.Length}."
             );
 
             ReceiveMatchUpdateRpc(
                 json,
-                RpcTarget.Single(
-                    targetClientId,
-                    RpcTargetUse.Temp
-                ));
+                RpcTarget.Single(targetClientId, RpcTargetUse.Temp)
+            );
         }
 
         private MatchSnapshotDto BuildSnapshot(SeatId viewerSeat)
@@ -409,22 +497,28 @@ namespace KLTN.Game.Networking
 
             if (matchState == null || snapshotBuilder == null)
             {
-                return MatchSnapshotBuilder.BuildWaiting(viewerSeat, opponentConnected, revision);
+                return MatchSnapshotBuilder.BuildWaiting(
+                    viewerSeat,
+                    opponentConnected,
+                    revision
+                );
             }
 
-            return snapshotBuilder.Build(matchState, viewerSeat, opponentConnected, revision);
+            return snapshotBuilder.Build(
+                matchState,
+                viewerSeat,
+                opponentConnected,
+                revision
+            );
         }
 
-        [Rpc(
-            SendTo.SpecifiedInParams,
-            InvokePermission = RpcInvokePermission.Server)]
-        private void ReceiveMatchUpdateRpc(
-            string json,
-            RpcParams rpcParams = default)
+        [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]
+        private void ReceiveMatchUpdateRpc(string json, RpcParams rpcParams = default)
         {
             Debug.Log(
-                $"Universal match update arrived. " +
-                $"ClientId={NetworkManager.LocalClientId}, JsonLength={json?.Length ?? 0}.");
+                $"Universal match update arrived. "
+                    + $"ClientId={NetworkManager.LocalClientId}, JsonLength={json?.Length ?? 0}."
+            );
 
             MatchUpdateDto update = JsonUtility.FromJson<MatchUpdateDto>(json);
 
@@ -438,44 +532,237 @@ namespace KLTN.Game.Networking
             MatchUpdateInboxRegistry.Current.Enqueue(update);
 
             Debug.Log(
-                $"Received match update. " +
-                $"Viewer={update.snapshot.viewerSeat}, " +
-                $"Self={update.snapshot.self.seat}, " +
-                $"Opponent={update.snapshot.opponent.seat}, " +
-                $"Revision={update.snapshot.revision}, " +
-                $"HasResolution={update.hasResolution}.");
+                $"Received match update. "
+                    + $"Viewer={update.snapshot.viewerSeat}, "
+                    + $"Self={update.snapshot.self.seat}, "
+                    + $"Opponent={update.snapshot.opponent.seat}, "
+                    + $"Revision={update.snapshot.revision}, "
+                    + $"HasResolution={update.hasResolution}."
+            );
         }
 
         #endregion
 
         #region Client Command API
 
-        public bool RequestPlayUnit(string instanceId, int boardSlotIndex)
+        public bool RequestSummonUnit(string instanceId)
         {
-            if (!IsSpawned || !IsClient) { return false; }
-
-            if (!ulong.TryParse(instanceId, out ulong parsedId))
+            if (!IsSpawned || !IsClient)
             {
-                MatchProjectionRegistry.Current.Reject(CommandRejectionReason.CardNotInHand);
                 return false;
             }
 
-            SubmitPlayUnitRpc(nextLocalCommandId++, parsedId, boardSlotIndex);
+            if (!ulong.TryParse(instanceId, out ulong parsedId))
+            {
+                MatchProjectionRegistry.Current.Reject(
+                    CommandRejectionReason.CardNotInHand
+                );
+
+                return false;
+            }
+
+            SubmitSummonUnitRpc(nextLocalCommandId++, parsedId);
+
+            return true;
+        }
+
+        public bool RequestDeclareAttack(string[] attackerIdsBySlot)
+        {
+            if (!IsSpawned || !IsClient)
+            {
+                return false;
+            }
+
+            if (
+                attackerIdsBySlot == null
+                || attackerIdsBySlot.Length != MatchState.BoardSlotCount
+            )
+            {
+                MatchProjectionRegistry.Current.Reject(
+                    CommandRejectionReason.InvalidAttackDeclaration
+                );
+
+                return false;
+            }
+
+            var parsedIds = new ulong[MatchState.BoardSlotCount];
+
+            for (int slotIndex = 0; slotIndex < attackerIdsBySlot.Length; slotIndex++)
+            {
+                string instanceId = attackerIdsBySlot[slotIndex];
+
+                if (string.IsNullOrWhiteSpace(instanceId))
+                {
+                    parsedIds[slotIndex] = 0;
+                    continue;
+                }
+
+                if (!ulong.TryParse(instanceId, out parsedIds[slotIndex]))
+                {
+                    MatchProjectionRegistry.Current.Reject(
+                        CommandRejectionReason.InvalidAttackDeclaration
+                    );
+
+                    return false;
+                }
+            }
+
+            SubmitDeclareAttackRpc(nextLocalCommandId++, parsedIds);
+
+            return true;
+        }
+
+        public bool RequestDeclareBlock(string[] blockerIdsBySlot)
+        {
+            if (!IsSpawned || !IsClient)
+            {
+                return false;
+            }
+
+            if (
+                blockerIdsBySlot == null
+                || blockerIdsBySlot.Length != MatchState.BoardSlotCount
+            )
+            {
+                MatchProjectionRegistry.Current.Reject(
+                    CommandRejectionReason.InvalidBlockDeclaration
+                );
+
+                return false;
+            }
+
+            var parsedIds = new ulong[MatchState.BoardSlotCount];
+
+            for (int slotIndex = 0; slotIndex < blockerIdsBySlot.Length; slotIndex++)
+            {
+                string instanceId = blockerIdsBySlot[slotIndex];
+
+                if (string.IsNullOrWhiteSpace(instanceId))
+                {
+                    parsedIds[slotIndex] = 0;
+                    continue;
+                }
+
+                if (!ulong.TryParse(instanceId, out parsedIds[slotIndex]))
+                {
+                    MatchProjectionRegistry.Current.Reject(
+                        CommandRejectionReason.InvalidBlockDeclaration
+                    );
+
+                    return false;
+                }
+            }
+
+            SubmitDeclareBlockRpc(nextLocalCommandId++, parsedIds);
+
+            return true;
+        }
+
+        public bool RequestSubmitAbilitySelection(
+            string requestId,
+            string[] primaryTargetIds,
+            string[] secondaryTargetIds
+        )
+        {
+            if (
+                !IsSpawned
+                || !IsClient
+                || !ulong.TryParse(requestId, out ulong parsedRequestId)
+            )
+            {
+                return false;
+            }
+
+            if (
+                !TryParseOptionalCardIds(
+                    primaryTargetIds,
+                    out ulong[] parsedPrimaryTargets
+                )
+                || !TryParseOptionalCardIds(
+                    secondaryTargetIds,
+                    out ulong[] parsedSecondaryTargets
+                )
+            )
+            {
+                MatchProjectionRegistry.Current.Reject(
+                    CommandRejectionReason.InvalidAbilityTarget
+                );
+
+                return false;
+            }
+
+            SubmitAbilitySelectionRpc(
+                nextLocalCommandId++,
+                parsedRequestId,
+                parsedPrimaryTargets,
+                parsedSecondaryTargets
+            );
+
+            return true;
+        }
+
+        public bool RequestCancelAbilitySelection(string requestId)
+        {
+            if (
+                !IsSpawned
+                || !IsClient
+                || !ulong.TryParse(requestId, out ulong parsedRequestId)
+            )
+            {
+                return false;
+            }
+
+            SubmitCancelAbilitySelectionRpc(nextLocalCommandId++, parsedRequestId);
+
             return true;
         }
 
         public bool RequestPass()
         {
-            if (!IsSpawned || !IsClient) { return false; }
+            if (!IsSpawned || !IsClient)
+            {
+                return false;
+            }
 
             SubmitPassRpc(nextLocalCommandId++);
             return true;
         }
+
         public bool RequestMulligan(ulong[] cardIdsToReplace)
         {
-            if (!IsSpawned || !IsClient) { return false; }
+            if (!IsSpawned || !IsClient)
+            {
+                return false;
+            }
 
             SubmitMulliganRpc(nextLocalCommandId++, cardIdsToReplace);
+            return true;
+        }
+
+        private static bool TryParseOptionalCardIds(
+            string[] instanceIds,
+            out ulong[] parsedIds
+        )
+        {
+            if (instanceIds == null || instanceIds.Length == 0)
+            {
+                parsedIds = Array.Empty<ulong>();
+
+                return true;
+            }
+
+            parsedIds = new ulong[instanceIds.Length];
+
+            for (int i = 0; i < instanceIds.Length; i++)
+            {
+                if (!ulong.TryParse(instanceIds[i], out parsedIds[i]))
+                {
+                    parsedIds = Array.Empty<ulong>();
+
+                    return false;
+                }
+            }
+
             return true;
         }
 
@@ -483,42 +770,156 @@ namespace KLTN.Game.Networking
 
         #region Server Command Pipeline
 
-        [Rpc(
-            SendTo.Server,
-            InvokePermission = RpcInvokePermission.Everyone)]
-        private void SubmitPlayUnitRpc(
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void SubmitSummonUnitRpc(
             ulong commandId,
             ulong cardInstanceId,
-            int boardSlotIndex,
-            RpcParams rpcParams = default)
+            RpcParams rpcParams = default
+        )
         {
             ulong senderClientId = rpcParams.Receive.SenderClientId;
 
-            if (!TryBeginCommand(senderClientId, commandId, out SeatId actor)) { return; }
+            if (!TryBeginCommand(senderClientId, commandId, out SeatId actor))
+            {
+                return;
+            }
 
-            CommandResult result = rulesEngine.TryPlayUnit(matchState, actor, cardInstanceId, boardSlotIndex);
+            CommandResult result = rulesEngine.TrySummonUnit(
+                matchState,
+                actor,
+                cardInstanceId
+            );
+
             FinishCommand(senderClientId, result);
         }
 
-        [Rpc(
-            SendTo.Server,
-            InvokePermission = RpcInvokePermission.Everyone)]
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void SubmitDeclareAttackRpc(
+            ulong commandId,
+            ulong[] attackerIdsBySlot,
+            RpcParams rpcParams = default
+        )
+        {
+            ulong senderClientId = rpcParams.Receive.SenderClientId;
+
+            if (!TryBeginCommand(senderClientId, commandId, out SeatId actor))
+            {
+                return;
+            }
+
+            CommandResult result = rulesEngine.TryDeclareAttack(
+                matchState,
+                actor,
+                attackerIdsBySlot
+            );
+
+            FinishCommand(senderClientId, result);
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void SubmitDeclareBlockRpc(
+            ulong commandId,
+            ulong[] blockerIdsBySlot,
+            RpcParams rpcParams = default
+        )
+        {
+            ulong senderClientId = rpcParams.Receive.SenderClientId;
+
+            if (!TryBeginCommand(senderClientId, commandId, out SeatId actor))
+            {
+                return;
+            }
+
+            CommandResult result = rulesEngine.TryDeclareBlock(
+                matchState,
+                actor,
+                blockerIdsBySlot
+            );
+
+            FinishCommand(senderClientId, result);
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void SubmitAbilitySelectionRpc(
+            ulong commandId,
+            ulong requestId,
+            ulong[] primaryTargetIds,
+            ulong[] secondaryTargetIds,
+            RpcParams rpcParams = default
+        )
+        {
+            ulong senderClientId = rpcParams.Receive.SenderClientId;
+
+            if (!TryBeginCommand(senderClientId, commandId, out SeatId actor))
+            {
+                return;
+            }
+
+            var selection = new AbilityTargetSelection(
+                primaryTargetIds,
+                secondaryTargetIds
+            );
+
+            CommandResult result = rulesEngine.TrySubmitAbilitySelection(
+                matchState,
+                actor,
+                requestId,
+                selection
+            );
+
+            FinishCommand(senderClientId, result);
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void SubmitCancelAbilitySelectionRpc(
+            ulong commandId,
+            ulong requestId,
+            RpcParams rpcParams = default
+        )
+        {
+            ulong senderClientId = rpcParams.Receive.SenderClientId;
+
+            if (!TryBeginCommand(senderClientId, commandId, out SeatId actor))
+            {
+                return;
+            }
+
+            CommandResult result = rulesEngine.TryCancelAbilitySelection(
+                matchState,
+                actor,
+                requestId
+            );
+
+            FinishCommand(senderClientId, result);
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         private void SubmitPassRpc(ulong commandId, RpcParams rpcParams = default)
         {
             ulong senderClientId = rpcParams.Receive.SenderClientId;
 
-            if (!TryBeginCommand(senderClientId, commandId, out SeatId actor)) { return; }
+            if (!TryBeginCommand(senderClientId, commandId, out SeatId actor))
+            {
+                return;
+            }
 
             CommandResult result = rulesEngine.TryPass(matchState, actor);
             FinishCommand(senderClientId, result);
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        private void SubmitMulliganRpc(ulong commandId, ulong[] cardIdsToReplace, RpcParams rpcParams = default)
+        private void SubmitMulliganRpc(
+            ulong commandId,
+            ulong[] cardIdsToReplace,
+            RpcParams rpcParams = default
+        )
         {
             ulong senderClientId = rpcParams.Receive.SenderClientId;
 
-            if (!TryBeginCommand(senderClientId, commandId, out SeatId actor)) { return; }
+            if (!TryBeginCommand(senderClientId, commandId, out SeatId actor))
+            {
+                return;
+            }
 
             PlayerState player = matchState.Player(actor);
 
@@ -535,15 +936,19 @@ namespace KLTN.Game.Networking
 
             if (matchState.IsMulliganPhaseComplete && matchState.RoundNumber == 0)
             {
-                matchState.RoundNumber = 1;
-                matchState.LastEvent = "Giai đoạn đổi bài kết thúc. Trận đấu bắt đầu!";
+                matchState.BeginFirstRound();
 
+                matchState.LastEvent = "Giai đoạn đổi bài kết thúc. Trận đấu bắt đầu!";
             }
 
             FinishCommand(senderClientId, CommandResult.Success());
         }
 
-        private bool TryBeginCommand(ulong senderClientId, ulong commandId, out SeatId actor)
+        private bool TryBeginCommand(
+            ulong senderClientId,
+            ulong commandId,
+            out SeatId actor
+        )
         {
             actor = default;
 
@@ -559,8 +964,10 @@ namespace KLTN.Game.Networking
                 return false;
             }
 
-            if (lastCommandIdByClient.TryGetValue(senderClientId, out ulong lastCommandId) &&
-                commandId <= lastCommandId)
+            if (
+                lastCommandIdByClient.TryGetValue(senderClientId, out ulong lastCommandId)
+                && commandId <= lastCommandId
+            )
             {
                 RejectCommand(senderClientId, CommandRejectionReason.DuplicateCommand);
                 return false;
@@ -580,31 +987,26 @@ namespace KLTN.Game.Networking
                 return;
             }
 
-            BroadcastUpdate(result.Resolution);
+            BroadcastUpdate(result.Resolution, result.RoundTransition);
         }
 
         #endregion
 
         #region Client Rejection Feedback
 
-        private void RejectCommand(
-            ulong targetClientId,
-            CommandRejectionReason reason)
+        private void RejectCommand(ulong targetClientId, CommandRejectionReason reason)
         {
             ReceiveCommandRejectedRpc(
                 (int)reason,
-                RpcTarget.Single(
-                    targetClientId,
-                    RpcTargetUse.Temp
-                ));
+                RpcTarget.Single(targetClientId, RpcTargetUse.Temp)
+            );
         }
 
-        [Rpc(
-            SendTo.SpecifiedInParams,
-            InvokePermission = RpcInvokePermission.Server)]
+        [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]
         private void ReceiveCommandRejectedRpc(
             int reasonValue,
-            RpcParams rpcParams = default)
+            RpcParams rpcParams = default
+        )
         {
             var reason = (CommandRejectionReason)reasonValue;
 
@@ -613,5 +1015,24 @@ namespace KLTN.Game.Networking
         }
 
         #endregion
+
+        private static RoundTransitionDto BuildRoundTransitionDto(
+            RoundTransition transition
+        )
+        {
+            if (transition == null)
+            {
+                return null;
+            }
+
+            return new RoundTransitionDto
+            {
+                completedRoundNumber = transition.CompletedRoundNumber,
+
+                nextRoundNumber = transition.NextRoundNumber,
+
+                nextAttackTokenOwner = (int)transition.NextAttackTokenOwner,
+            };
+        }
     }
 }

@@ -27,6 +27,7 @@ namespace KLTN.Game.Presentation
         private Vector2 homeAnchorMax;
         private Vector2 homePivot;
         private bool homeCaptured;
+        private CardVisualLocation homeLocation = CardVisualLocation.Hand;
 
         #endregion
 
@@ -34,6 +35,7 @@ namespace KLTN.Game.Presentation
 
         private RectTransform pendingParent;
         private bool isPending;
+        private CardVisualLocation pendingLocation = CardVisualLocation.Hand;
 
         #endregion
 
@@ -49,6 +51,8 @@ namespace KLTN.Game.Presentation
 
         public NetworkCardVisual Visual => visual;
         public bool IsPending => isPending;
+        public CardVisualLocation HomeLocation => homeLocation;
+        public RectTransform PendingParent => pendingParent;
 
         #endregion
 
@@ -66,12 +70,19 @@ namespace KLTN.Game.Presentation
 
         #region Configuration
 
-        public void Configure(bool isInteractable, RectTransform targetDragLayer)
+        public void Configure(
+            bool isInteractable,
+            RectTransform targetDragLayer,
+            CardVisualLocation originLocation)
         {
             canDrag = isInteractable;
             dragLayer = targetDragLayer;
+            homeLocation = originLocation;
 
-            if (!homeCaptured) { CaptureHome(); }
+            if (!homeCaptured)
+            {
+                CaptureHome();
+            }
 
             visual.SetInteractableVisual(isInteractable);
         }
@@ -126,7 +137,7 @@ namespace KLTN.Game.Presentation
             if (isPending) { RestorePendingPlacement(); }
             else
             {
-                RestoreToHand();
+                RestoreToHome();
             }
         }
 
@@ -134,17 +145,49 @@ namespace KLTN.Game.Presentation
 
         #region Pending Placement
 
-        public void PlacePending(RectTransform slotContent)
+        public void PlacePending(
+            RectTransform targetParent,
+            CardVisualLocation location)
         {
-            if (!dragging || slotContent == null) { return; }
+            if (!dragging ||
+                targetParent == null)
+            {
+                return;
+            }
 
+            SetPendingPlacement(
+                targetParent,
+                location);
+        }
+
+        public void MovePending(
+            RectTransform targetParent,
+            CardVisualLocation location)
+        {
+            if (targetParent == null)
+            {
+                return;
+            }
+
+            SetPendingPlacement(
+                targetParent,
+                location);
+        }
+
+        private void SetPendingPlacement(
+            RectTransform targetParent,
+            CardVisualLocation location)
+        {
             dropAccepted = true;
             isPending = true;
-            pendingParent = slotContent;
-
-            // A pending card may be dragged again.
+            pendingParent = targetParent;
+            pendingLocation = location;
             canDrag = true;
-            ApplyBoardPlacement(slotContent);
+
+            ApplyPendingPlacement(
+                targetParent,
+                location);
+
             visual.SetPending(true);
             visual.SetInteractableVisual(true);
         }
@@ -153,29 +196,47 @@ namespace KLTN.Game.Presentation
         {
             if (pendingParent == null)
             {
-                RestoreToHand();
+                RestoreToHome();
                 return;
             }
 
-            ApplyBoardPlacement(pendingParent);
+            ApplyPendingPlacement(
+                pendingParent,
+                pendingLocation);
+
             canDrag = true;
             visual.SetPending(true);
             visual.SetInteractableVisual(true);
         }
 
-        private void ApplyBoardPlacement(RectTransform slotContent)
+        private void ApplyPendingPlacement(
+            RectTransform targetParent,
+            CardVisualLocation location)
         {
-            transform.SetParent(slotContent, false);
-            visualLayout?.Apply(CardVisualLocation.Board);
-            rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-            rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-            rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            rectTransform.anchoredPosition = Vector2.zero;
-            rectTransform.localScale = Vector3.one;
-            rectTransform.localRotation = Quaternion.identity;
+            transform.SetParent(targetParent, false);
+
+            visualLayout?.Apply(location);
+
+            rectTransform.anchorMin =
+                new Vector2(0.5f, 0.5f);
+
+            rectTransform.anchorMax =
+                new Vector2(0.5f, 0.5f);
+
+            rectTransform.pivot =
+                new Vector2(0.5f, 0.5f);
+
+            rectTransform.anchoredPosition =
+                Vector2.zero;
+
+            rectTransform.localScale =
+                Vector3.one;
+
+            rectTransform.localRotation =
+                Quaternion.identity;
         }
 
-        public void RestoreToHand()
+        public void RestoreToHome()
         {
             if (!homeCaptured || homeParent == null) { return; }
 
@@ -183,9 +244,10 @@ namespace KLTN.Game.Presentation
             dropAccepted = true;
             isPending = false;
             pendingParent = null;
+            pendingLocation = homeLocation;
             transform.SetParent(homeParent, false);
             transform.SetSiblingIndex(homeSiblingIndex);
-            visualLayout?.Apply(CardVisualLocation.Hand);
+            visualLayout?.Apply(homeLocation);
             rectTransform.anchorMin = homeAnchorMin;
             rectTransform.anchorMax = homeAnchorMax;
             rectTransform.pivot = homePivot;
@@ -195,7 +257,7 @@ namespace KLTN.Game.Presentation
             visual.SetPending(false);
             visual.SetInteractableVisual(true);
 
-            if (homeParent is RectTransform handRoot) { LayoutRebuilder.ForceRebuildLayoutImmediate(handRoot); }
+            if (homeParent is RectTransform homeRoot) { LayoutRebuilder.ForceRebuildLayoutImmediate(homeRoot); }
         }
 
         #endregion

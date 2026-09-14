@@ -8,7 +8,8 @@ namespace KLTN.Game.Content
     {
         #region Fields
 
-        private readonly Dictionary<string, Card> cardsById = new Dictionary<string, Card>();
+        private readonly Dictionary<string, Card> cardsById =
+            new Dictionary<string, Card>();
 
         #endregion
 
@@ -20,8 +21,7 @@ namespace KLTN.Game.Content
 
             foreach (Card asset in assets)
             {
-                if (asset == null ||
-                    cardsById.ContainsKey(asset.name))
+                if (asset == null || cardsById.ContainsKey(asset.name))
                 {
                     continue;
                 }
@@ -36,7 +36,10 @@ namespace KLTN.Game.Content
 
         public Card Find(string definitionId)
         {
-            if (string.IsNullOrEmpty(definitionId)) { return null; }
+            if (string.IsNullOrEmpty(definitionId))
+            {
+                return null;
+            }
 
             cardsById.TryGetValue(definitionId, out Card asset);
             return asset;

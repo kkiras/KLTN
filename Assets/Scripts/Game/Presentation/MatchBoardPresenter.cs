@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using KLTN.Game.Content;
+using KLTN.Game.Domain;
 using KLTN.Game.Networking;
 using UnityEngine;
 
@@ -9,22 +11,43 @@ namespace KLTN.Game.Presentation
     {
         #region Serialized Fields
 
-        [SerializeField] private NetworkCardVisual cardPrefab;
-        [SerializeField] private CardPresentationCatalog presentationCatalog;
-        [SerializeField] private Sprite cardBack;
+        [SerializeField]
+        private NetworkCardVisual cardPrefab;
+
+        [SerializeField]
+        private CardPresentationCatalog presentationCatalog;
+
+        [SerializeField]
+        private Sprite cardBack;
 
         [Header("Hands")]
-        [SerializeField] private RectTransform selfHandRoot;
+        [SerializeField]
+        private RectTransform selfHandRoot;
 
-        [SerializeField] private RectTransform opponentHandRoot;
+        [SerializeField]
+        private RectTransform opponentHandRoot;
+
+        [Header("Ability Selection")]
+        [SerializeField]
+        private RectTransform abilitySelectionSourceRoot;
+
+        [Header("Reserves")]
+        [SerializeField]
+        private RectTransform selfReserveRoot;
+
+        [SerializeField]
+        private RectTransform opponentReserveRoot;
 
         [Header("Board slots: element 0 = slot 1")]
-        [SerializeField] private RectTransform[] selfBoardSlots = new RectTransform[3];
+        [SerializeField]
+        private RectTransform[] selfBoardSlots = new RectTransform[3];
 
-        [SerializeField] private RectTransform[] opponentBoardSlots = new RectTransform[3];
+        [SerializeField]
+        private RectTransform[] opponentBoardSlots = new RectTransform[3];
 
         [Header("Drag")]
-        [SerializeField] private RectTransform dragLayer;
+        [SerializeField]
+        private RectTransform dragLayer;
         public MulliganPresenter mulliganPresenter;
 
         #endregion
@@ -36,7 +59,14 @@ namespace KLTN.Game.Presentation
 
         private readonly List<GameObject> opponentHandBacks = new List<GameObject>();
 
-        private readonly Dictionary<string, NetworkCardVisual> faceUpViewsById = new Dictionary<string, NetworkCardVisual>();
+        private readonly Dictionary<string, NetworkCardVisual> faceUpViewsById =
+            new Dictionary<string, NetworkCardVisual>();
+
+        #endregion
+
+        #region Events
+
+        public event Action FaceUpViewsRendered;
 
         #endregion
 
@@ -47,12 +77,18 @@ namespace KLTN.Game.Presentation
             projection = MatchProjectionRegistry.Current;
             projection.SnapshotChanged += Render;
 
-            if (projection.Current != null) { Render(projection.Current); }
+            if (projection.Current != null)
+            {
+                Render(projection.Current);
+            }
         }
 
         private void OnDisable()
         {
-            if (projection != null) { projection.SnapshotChanged -= Render; }
+            if (projection != null)
+            {
+                projection.SnapshotChanged -= Render;
+            }
 
             ClearViews();
         }
@@ -65,11 +101,14 @@ namespace KLTN.Game.Presentation
         {
             ClearViews();
 
-            if (snapshot == null ||
-                snapshot.self == null ||
-                snapshot.opponent == null ||
-                cardPrefab == null)
+            if (
+                snapshot == null
+                || snapshot.self == null
+                || snapshot.opponent == null
+                || cardPrefab == null
+            )
             {
+                FaceUpViewsRendered?.Invoke();
                 return;
             }
 
@@ -84,81 +123,184 @@ namespace KLTN.Game.Presentation
             }
 
             RenderOpponentHand(snapshot);
+            RenderReserve(
+                snapshot.self.reserve,
+                selfReserveRoot,
+                canDrag: snapshot.viewerCanDeclareAttack || snapshot.viewerCanDeclareBlock
+            );
+
+            RenderReserve(snapshot.opponent.reserve, opponentReserveRoot, canDrag: false);
             RenderBoard(snapshot.self.board, selfBoardSlots);
             RenderBoard(snapshot.opponent.board, opponentBoardSlots);
+            FaceUpViewsRendered?.Invoke();
         }
 
         private void RenderSelfHand(MatchSnapshotDto snapshot)
         {
-            if (selfHandRoot == null ||
-                snapshot.self.hand == null)
+            if (snapshot.self.hand == null || selfHandRoot == null)
             {
                 return;
             }
 
+            bool hasActiveRosterSpace =
+                snapshot.self.activeRosterCount < MatchState.MaximumActiveRosterSize;
+
             foreach (CardViewDto dto in snapshot.self.hand)
             {
-                bool canDrag = snapshot.viewerCanAct && dto.energy <= snapshot.self.mana;
-                CreateFaceUpCard(dto, selfHandRoot, canDrag, CardVisualLocation.Hand);
+                bool isSelectionSource = IsPendingAbilitySelectionSource(snapshot, dto);
+
+                RectTransform parent =
+                    isSelectionSource && abilitySelectionSourceRoot != null
+                        ? abilitySelectionSourceRoot
+                        : selfHandRoot;
+
+                CardVisualLocation location = isSelectionSource
+                    ? CardVisualLocation.AbilitySelection
+                    : CardVisualLocation.Hand;
+
+                bool canDrag =
+                    !isSelectionSource
+                    && snapshot.viewerCanAct
+                    && hasActiveRosterSpace
+                    && dto.energy <= snapshot.self.mana;
+
+                NetworkCardVisual view = CreateFaceUpCard(dto, parent, canDrag, location);
+
+                if (isSelectionSource)
+                {
+                    CenterAbilitySelectionSource(view);
+                }
             }
+        }
+
+        private static bool IsPendingAbilitySelectionSource(
+            MatchSnapshotDto snapshot,
+            CardViewDto card
+        )
+        {
+            return snapshot.viewerMustSelectAbilityTargets
+                && snapshot.pendingAbilitySelection != null
+                && card != null
+                && string.Equals(
+                    snapshot.pendingAbilitySelection.sourceCardInstanceId,
+                    card.instanceId,
+                    StringComparison.Ordinal
+                );
+        }
+
+        private static void CenterAbilitySelectionSource(NetworkCardVisual view)
+        {
+            if (view == null || !(view.transform is RectTransform rect))
+            {
+                return;
+            }
+
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.localRotation = Quaternion.identity;
+
+            view.SetPending(true);
+            view.SetInteractableVisual(false);
         }
 
         private void RenderOpponentHand(MatchSnapshotDto snapshot)
         {
-            if (opponentHandRoot == null) { return; }
+            if (opponentHandRoot == null)
+            {
+                return;
+            }
 
-            for (int i = 0;
-                 i < snapshot.opponent.handCount;
-                 i++)
+            for (int i = 0; i < snapshot.opponent.handCount; i++)
             {
                 NetworkCardVisual view = Instantiate(cardPrefab, opponentHandRoot);
                 CardVisualLayout layout = view.GetComponent<CardVisualLayout>();
 
-                if (layout != null) { layout.Apply(CardVisualLocation.Hand); }
+                if (layout != null)
+                {
+                    layout.Apply(CardVisualLocation.Hand);
+                }
 
                 view.BindBack(cardBack);
                 DraggableHandCard draggable = view.GetComponent<DraggableHandCard>();
 
-                if (draggable != null) { draggable.Configure(false, dragLayer); }
+                if (draggable != null)
+                {
+                    draggable.Configure(false, dragLayer, CardVisualLocation.Hand);
+                }
 
                 spawnedViews.Add(view.gameObject);
                 opponentHandBacks.Add(view.gameObject);
             }
         }
 
-        private void RenderBoard(CardViewDto[] cards, RectTransform[] slots)
+        private void RenderReserve(
+            CardViewDto[] cards,
+            RectTransform reserveRoot,
+            bool canDrag
+        )
         {
-            if (cards == null ||
-                slots == null ||
-                slots.Length < 3)
+            if (cards == null || reserveRoot == null)
             {
                 return;
             }
 
             foreach (CardViewDto dto in cards)
             {
-                if (dto.boardSlotIndex < 0 ||
-                    dto.boardSlotIndex >= slots.Length ||
-                    slots[dto.boardSlotIndex] == null)
+                CreateFaceUpCard(dto, reserveRoot, canDrag, CardVisualLocation.Reserve);
+            }
+        }
+
+        private void RenderBoard(CardViewDto[] cards, RectTransform[] slots)
+        {
+            if (cards == null || slots == null || slots.Length < 3)
+            {
+                return;
+            }
+
+            foreach (CardViewDto dto in cards)
+            {
+                if (
+                    dto.boardSlotIndex < 0
+                    || dto.boardSlotIndex >= slots.Length
+                    || slots[dto.boardSlotIndex] == null
+                )
                 {
                     continue;
                 }
 
-                CreateFaceUpCard(dto, slots[dto.boardSlotIndex], false, CardVisualLocation.Board);
+                CreateFaceUpCard(
+                    dto,
+                    slots[dto.boardSlotIndex],
+                    false,
+                    CardVisualLocation.Board
+                );
             }
         }
 
-        private NetworkCardVisual CreateFaceUpCard(CardViewDto dto, RectTransform parent, bool canDrag, CardVisualLocation location)
+        private NetworkCardVisual CreateFaceUpCard(
+            CardViewDto dto,
+            RectTransform parent,
+            bool canDrag,
+            CardVisualLocation location
+        )
         {
             NetworkCardVisual view = Instantiate(cardPrefab, parent);
             CardVisualLayout layout = view.GetComponent<CardVisualLayout>();
 
-            if (layout != null) { layout.Apply(location); }
+            if (layout != null)
+            {
+                layout.Apply(location);
+            }
 
             view.BindFaceUp(dto, FindArtwork(dto.definitionId));
             DraggableHandCard draggable = view.GetComponent<DraggableHandCard>();
 
-            if (draggable != null) { draggable.Configure(canDrag, dragLayer); }
+            if (draggable != null)
+            {
+                draggable.Configure(canDrag, dragLayer, location);
+            }
 
             spawnedViews.Add(view.gameObject);
 
@@ -181,7 +323,10 @@ namespace KLTN.Game.Presentation
 
         public void PrepareCombat(RoundResolutionDto resolution, int viewerSeat)
         {
-            if (resolution?.steps == null) { return; }
+            if (resolution?.steps == null)
+            {
+                return;
+            }
 
             for (int i = 0; i < resolution.steps.Length; i++)
             {
@@ -201,44 +346,66 @@ namespace KLTN.Game.Presentation
                 return false;
             }
 
-            return faceUpViewsById.TryGetValue(instanceId, out view) &&
-                view != null;
+            return faceUpViewsById.TryGetValue(instanceId, out view) && view != null;
+        }
+
+        public void ClearAbilityTargetVisuals()
+        {
+            foreach (NetworkCardVisual view in faceUpViewsById.Values)
+            {
+                if (view != null)
+                {
+                    view.ClearAbilityTargetState();
+                }
+            }
         }
 
         private void PrepareResolvedCard(
             ResolvedCardDto resolvedCard,
             int slotIndex,
-            int viewerSeat)
+            int viewerSeat
+        )
         {
             CardViewDto card = resolvedCard?.cardBefore;
 
-            if (card == null || string.IsNullOrWhiteSpace(card.instanceId)) { return; }
+            if (card == null || string.IsNullOrWhiteSpace(card.instanceId))
+            {
+                return;
+            }
 
             bool isSelfCard = resolvedCard.seat == viewerSeat;
             RectTransform[] targetSlots = isSelfCard
                 ? selfBoardSlots
                 : opponentBoardSlots;
 
-            if (targetSlots == null ||
-                slotIndex < 0 ||
-                slotIndex >= targetSlots.Length ||
-                targetSlots[slotIndex] == null)
+            if (
+                targetSlots == null
+                || slotIndex < 0
+                || slotIndex >= targetSlots.Length
+                || targetSlots[slotIndex] == null
+            )
             {
                 Debug.LogWarning(
-                    $"Không thể chuẩn bị combat visual. " +
-                    $"Seat={resolvedCard.seat}, Slot={slotIndex}."
+                    $"Không thể chuẩn bị combat visual. "
+                        + $"Seat={resolvedCard.seat}, Slot={slotIndex}."
                 );
 
                 return;
             }
 
-            bool viewAlreadyExists = TryGetFaceUpVisual(card.instanceId, out NetworkCardVisual view);
+            bool viewAlreadyExists = TryGetFaceUpVisual(
+                card.instanceId,
+                out NetworkCardVisual view
+            );
 
             if (!viewAlreadyExists)
             {
-                if (!isSelfCard) { RemoveOneOpponentHandBack(); }
-
-                view = CreateFaceUpCard(card, targetSlots[slotIndex], false, CardVisualLocation.Board);
+                view = CreateFaceUpCard(
+                    card,
+                    targetSlots[slotIndex],
+                    false,
+                    CardVisualLocation.Board
+                );
             }
             else
             {
@@ -249,7 +416,11 @@ namespace KLTN.Game.Presentation
             view.SetInteractableVisual(true);
         }
 
-        private void PlaceExistingCardOnBoard(NetworkCardVisual view, CardViewDto card, RectTransform targetSlot)
+        private void PlaceExistingCardOnBoard(
+            NetworkCardVisual view,
+            CardViewDto card,
+            RectTransform targetSlot
+        )
         {
             view.transform.SetParent(targetSlot, false);
 
@@ -278,7 +449,7 @@ namespace KLTN.Game.Presentation
 
             if (draggable != null)
             {
-                draggable.Configure(false, dragLayer);
+                draggable.Configure(false, dragLayer, CardVisualLocation.Board);
             }
 
             view.SetInteractableVisual(true);
@@ -291,7 +462,10 @@ namespace KLTN.Game.Presentation
                 GameObject cardBackObject = opponentHandBacks[i];
                 opponentHandBacks.RemoveAt(i);
 
-                if (cardBackObject == null) { continue; }
+                if (cardBackObject == null)
+                {
+                    continue;
+                }
 
                 spawnedViews.Remove(cardBackObject);
                 cardBackObject.SetActive(false);
@@ -306,7 +480,10 @@ namespace KLTN.Game.Presentation
 
         private CardArtworkView FindArtwork(string definitionId)
         {
-            if (presentationCatalog == null) { return null; }
+            if (presentationCatalog == null)
+            {
+                return null;
+            }
 
             return presentationCatalog.Find(definitionId);
         }
@@ -319,7 +496,10 @@ namespace KLTN.Game.Presentation
         {
             foreach (GameObject spawnedView in spawnedViews)
             {
-                if (spawnedView != null) { Destroy(spawnedView); }
+                if (spawnedView != null)
+                {
+                    Destroy(spawnedView);
+                }
             }
 
             spawnedViews.Clear();

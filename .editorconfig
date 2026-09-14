@@ -7,6 +7,7 @@ end_of_line = crlf
 indent_style = space
 indent_size = 4
 insert_final_newline = true
+max_line_length = 90
 
 # Keep short guards and accessors compact when they are intentionally written
 # on one line. Longer blocks continue to use Allman braces.

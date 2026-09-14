@@ -13,6 +13,49 @@ MonoBehaviour:
   m_Name: QuyDaXoa
   m_EditorClassIdentifier: Assembly-CSharp::CMCMProductions.Card
   cardName: "Qu\u1EF7 D\u1EA1 Xoa"
+  rulesText: "\u0110\xE1ng s\u1EE3. Play: gi\u1EA3m m\u1ED9t n\u1EEDa m\xE1u Nexus
+    \u0111\u1ECBch, l\xE0m tr\xF2n m\xE1u c\xF2n l\u1EA1i l\xEAn. Last Breath: tr\u1EDF
+    v\u1EC1 DrawHand."
+  cardType: 
   health: 6
   damage: 10
   energy: 9
+  keywords: 1
+  abilities:
+  - abilityId: quy_da_xoa_play
+    trigger: 0
+    condition: 0
+    oncePerRound: 0
+    oncePerMatch: 0
+    missingTargetPolicy: 0
+    requiredTargets: []
+    effects:
+    - kind: 13
+      target: 7
+      amount: 0
+      secondaryAmount: 0
+      count: 1
+      duration: 0
+      cardDefinitionId: 
+  - abilityId: quy_da_xoa_last_breath
+    trigger: 5
+    condition: 0
+    oncePerRound: 0
+    oncePerMatch: 0
+    missingTargetPolicy: 0
+    requiredTargets: []
+    effects:
+    - kind: 10
+      target: 1
+      amount: 0
+      secondaryAmount: 0
+      count: 1
+      duration: 0
+      cardDefinitionId: 
+  passiveRules:
+    costReductionPerAlliedDeathThisGame: 0
+    revivesAtRoundStart: 0
+    powerAndHealthPerDeath: 0
+    joinsAttackFromGraveyard: 0
+    requiresEphemeralAttacker: 0
+  maximumCopiesPerDeck: 0

@@ -13,6 +13,38 @@ MonoBehaviour:
   m_Name: MaGa
   m_EditorClassIdentifier: Assembly-CSharp::CMCMProductions.Card
   cardName: "Ma G\xE0"
+  rulesText: "Play: gi\u1EA3m 1 mana cho m\u1ED9t Unit \u0111\u1ED3ng minh kh\xE1c
+    trong DrawHand."
+  cardType: 
   health: 1
   damage: 2
   energy: 1
+  keywords: 0
+  abilities:
+  - abilityId: ma_ga_play
+    trigger: 0
+    condition: 0
+    oncePerRound: 0
+    oncePerMatch: 0
+    missingTargetPolicy: 1
+    requiredTargets:
+    - slot: 0
+      relation: 0
+      zones: 1
+      count: 1
+      excludeSource: 1
+    effects:
+    - kind: 8
+      target: 4
+      amount: 1
+      secondaryAmount: 0
+      count: 1
+      duration: 0
+      cardDefinitionId: 
+  passiveRules:
+    costReductionPerAlliedDeathThisGame: 0
+    revivesAtRoundStart: 0
+    powerAndHealthPerDeath: 0
+    joinsAttackFromGraveyard: 0
+    requiresEphemeralAttacker: 0
+  maximumCopiesPerDeck: 0

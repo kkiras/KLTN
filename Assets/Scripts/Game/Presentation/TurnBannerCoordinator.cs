@@ -8,7 +8,9 @@ namespace KLTN.Game.Presentation
     {
         #region Serialized Fields
 
-        [SerializeField] private MatchTransitionBanner transitionBanner;
+        [SerializeField]
+        private MatchTransitionBanner transitionBanner;
+        private int lastRoundNumber = -1;
 
         #endregion
 
@@ -20,6 +22,7 @@ namespace KLTN.Game.Presentation
         private bool wasOwnTurn;
         private bool pendingYourTurn;
         private ulong lastQueuedRevision = ulong.MaxValue;
+        private int pendingRoundStartNumber;
 
         #endregion
 
@@ -30,12 +33,18 @@ namespace KLTN.Game.Presentation
             projection = MatchProjectionRegistry.Current;
             projection.SnapshotChanged += HandleSnapshotChanged;
 
-            if (projection.Current != null) { HandleSnapshotChanged(projection.Current); }
+            if (projection.Current != null)
+            {
+                HandleSnapshotChanged(projection.Current);
+            }
         }
 
         private void OnDisable()
         {
-            if (projection != null) { projection.SnapshotChanged -= HandleSnapshotChanged; }
+            if (projection != null)
+            {
+                projection.SnapshotChanged -= HandleSnapshotChanged;
+            }
 
             if (playbackCoroutine != null)
             {
@@ -44,6 +53,12 @@ namespace KLTN.Game.Presentation
             }
 
             pendingYourTurn = false;
+
+            hasSnapshot = false;
+            wasOwnTurn = false;
+            lastRoundNumber = -1;
+            lastQueuedRevision = ulong.MaxValue;
+            pendingRoundStartNumber = 0;
         }
 
         #endregion
@@ -52,24 +67,49 @@ namespace KLTN.Game.Presentation
 
         private void HandleSnapshotChanged(MatchSnapshotDto snapshot)
         {
-            if (snapshot == null) { return; }
+            if (snapshot == null)
+            {
+                return;
+            }
+
+            int previousRoundNumber = lastRoundNumber;
+
+            bool roundChanged = hasSnapshot && snapshot.roundNumber > previousRoundNumber;
+
+            bool shouldShowFirstRound =
+                snapshot.roundNumber == 1 && (!hasSnapshot || previousRoundNumber < 1);
 
             bool isOwnTurn =
-                snapshot.viewerCanAct &&
-                snapshot.activeSeat == snapshot.viewerSeat;
+                snapshot.viewerCanAct && snapshot.activeSeat == snapshot.viewerSeat;
 
-            bool becameOwnTurn =
-                isOwnTurn &&
-                (!hasSnapshot || !wasOwnTurn);
+            bool shouldShowYourTurn =
+                isOwnTurn && (!hasSnapshot || !wasOwnTurn || roundChanged);
 
             hasSnapshot = true;
             wasOwnTurn = isOwnTurn;
+            lastRoundNumber = snapshot.roundNumber;
 
-            if (!becameOwnTurn) { return; }
-            if (snapshot.revision == lastQueuedRevision) { return; }
+            if (!shouldShowFirstRound && !shouldShowYourTurn)
+            {
+                return;
+            }
+
+            if (snapshot.revision == lastQueuedRevision)
+            {
+                return;
+            }
 
             lastQueuedRevision = snapshot.revision;
-            pendingYourTurn = true;
+
+            if (shouldShowFirstRound)
+            {
+                pendingRoundStartNumber = 1;
+            }
+
+            if (shouldShowYourTurn)
+            {
+                pendingYourTurn = true;
+            }
 
             if (playbackCoroutine == null)
             {
@@ -79,13 +119,25 @@ namespace KLTN.Game.Presentation
 
         private IEnumerator PlayPendingBanners()
         {
-            while (pendingYourTurn)
+            while (pendingRoundStartNumber > 0 || pendingYourTurn)
             {
-                pendingYourTurn = false;
+                int roundNumber = pendingRoundStartNumber;
 
-                if (transitionBanner != null)
+                pendingRoundStartNumber = 0;
+
+                if (roundNumber > 0 && transitionBanner != null)
                 {
-                    yield return transitionBanner.PlayYourTurn();
+                    yield return transitionBanner.PlayRoundStart(roundNumber);
+                }
+
+                if (pendingYourTurn)
+                {
+                    pendingYourTurn = false;
+
+                    if (transitionBanner != null)
+                    {
+                        yield return transitionBanner.PlayYourTurn();
+                    }
                 }
             }
 

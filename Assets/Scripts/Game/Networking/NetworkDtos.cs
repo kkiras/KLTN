@@ -18,6 +18,11 @@ namespace KLTN.Game.Networking
         public int health;
         public int damage;
         public int energy;
+        public int keywords;
+
+        // Metadata used only to preview a Support buff while arranging attackers.
+        public int supportDamageBonus;
+        public int supportHealthBonus;
 
         // -1 while in hand, 0-2 while on the board.
         public int boardSlotIndex = -1;
@@ -43,15 +48,43 @@ namespace KLTN.Game.Networking
         public int maxMana;
         public int deckCount;
         public int handCount;
+        public int reserveCount;
+        public int activeRosterCount;
 
         #endregion
 
         #region Viewer-Visible Cards
 
         public CardViewDto[] hand;
+        public CardViewDto[] reserve;
         public CardViewDto[] board;
 
         #endregion
+    }
+
+    [Serializable]
+    public sealed class AbilityTargetRequirementDto
+    {
+        public int slot;
+        public int relation;
+        public int zones;
+        public int count;
+        public bool excludeSource;
+
+        public string[] validTargetIds;
+    }
+
+    [Serializable]
+    public sealed class PendingAbilitySelectionDto
+    {
+        public string requestId;
+        public string sourceCardInstanceId;
+
+        public int choosingSeat;
+        public string abilityId;
+        public bool canCancel;
+
+        public AbilityTargetRequirementDto[] requirements;
     }
 
     [Serializable]
@@ -69,9 +102,20 @@ namespace KLTN.Game.Networking
         public int firstSeat;
         public int activeSeat;
         public int roundNumber;
-        public int actionsCompletedInRound;
+
+        public int phase;
+        public int attackTokenOwner;
+        public bool attackTokenAvailable;
+        public int consecutivePasses;
+
         public int outcome;
         public bool viewerCanAct;
+        public bool viewerCanEndRound;
+        public bool viewerCanDeclareAttack;
+        public bool viewerCanDeclareBlock;
+        public bool viewerMustSelectAbilityTargets;
+
+        public PendingAbilitySelectionDto pendingAbilitySelection;
 
         #endregion
 
@@ -92,7 +136,10 @@ namespace KLTN.Game.Networking
         public int seat;
         public CardViewDto cardBefore;
         public int healthAfter;
+        public int damageTaken;
+
         public bool died;
+        public bool diedFromEphemeral;
 
         #endregion
     }
@@ -135,13 +182,25 @@ namespace KLTN.Game.Networking
     }
 
     [Serializable]
+    public sealed class RoundTransitionDto
+    {
+        public int completedRoundNumber;
+        public int nextRoundNumber;
+        public int nextAttackTokenOwner;
+    }
+
+    [Serializable]
     public sealed class MatchUpdateDto
     {
         #region Authoritative Update
 
         public MatchSnapshotDto snapshot;
+
         public bool hasResolution;
         public RoundResolutionDto resolution;
+
+        public bool hasRoundTransition;
+        public RoundTransitionDto roundTransition;
 
         #endregion
     }

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace KLTN.Game.Presentation
@@ -13,7 +14,7 @@ namespace KLTN.Game.Presentation
         private enum SlideOrigin
         {
             Left = -1,
-            Right = 1
+            Right = 1,
         }
 
         #endregion
@@ -21,38 +22,77 @@ namespace KLTN.Game.Presentation
         #region Serialized Fields
 
         [Header("References")]
-        [SerializeField] private RectTransform canvasRoot;
-        [SerializeField] private RectTransform bannerRoot;
-        [SerializeField] private RectTransform textRoot;
-        [SerializeField] private CanvasGroup bannerCanvasGroup;
-        [SerializeField] private Image backgroundImage;
-        [SerializeField] private Image accentImage;
-        [SerializeField] private TMP_Text label;
-        [SerializeField] private GameObject gameplayInputBlocker;
+        [SerializeField]
+        private RectTransform canvasRoot;
+
+        [SerializeField]
+        private RectTransform bannerRoot;
+
+        [SerializeField]
+        private RectTransform textRoot;
+
+        [SerializeField]
+        private CanvasGroup bannerCanvasGroup;
+
+        [SerializeField]
+        private Image backgroundImage;
+
+        [SerializeField]
+        private Image accentImage;
+
+        [SerializeField]
+        private TMP_Text label;
+
+        [SerializeField]
+        private GameObject gameplayInputBlocker;
 
         [Header("Colors")]
-        [SerializeField] private Color yourTurnColor = new Color(0.05f, 0.30f, 0.85f, 0.95f);
-        [SerializeField] private Color roundEndColor = new Color(0.75f, 0.05f, 0.10f, 0.95f);
+        [SerializeField]
+        private Color yourTurnColor = new Color(0.05f, 0.30f, 0.85f, 0.95f);
+
+        [FormerlySerializedAs("roundEndColor")]
+        [SerializeField]
+        private Color roundStartColor = new Color(0.75f, 0.05f, 0.10f, 0.95f);
 
         [Header("Movement")]
-        [SerializeField, Min(0f)] private float backgroundTravelMultiplier = 1.05f;
-        [SerializeField, Min(0f)] private float textTravelDistance = 120f;
+        [SerializeField, Min(0f)]
+        private float backgroundTravelMultiplier = 1.05f;
+
+        [SerializeField, Min(0f)]
+        private float textTravelDistance = 120f;
 
         [Header("Timing")]
-        [SerializeField, Min(0f)] private float enterDuration = 0.45f;
-        [SerializeField, Min(0f)] private float holdDuration = 0.75f;
-        [SerializeField, Min(0f)] private float exitDuration = 0.35f;
+        [SerializeField, Min(0f)]
+        private float enterDuration = 0.45f;
+
+        [SerializeField, Min(0f)]
+        private float holdDuration = 0.75f;
+
+        [SerializeField, Min(0f)]
+        private float exitDuration = 0.35f;
 
         [Header("Entry")]
-        [SerializeField, Range(0.1f, 1f)] private float fullOpacityAt = 0.55f;
-        [SerializeField, Range(0f, 0.9f)] private float textRevealStartNormalized = 0.3f;
-        [SerializeField, Range(0.05f, 1f)] private float characterFadeSpanNormalized = 0.25f;
+        [SerializeField, Range(0.1f, 1f)]
+        private float fullOpacityAt = 0.55f;
+
+        [SerializeField, Range(0f, 0.9f)]
+        private float textRevealStartNormalized = 0.3f;
+
+        [SerializeField, Range(0.05f, 1f)]
+        private float characterFadeSpanNormalized = 0.25f;
 
         [Header("Exit")]
-        [SerializeField, Range(0.1f, 1f)] private float textExitEndNormalized = 0.72f;
-        [SerializeField, Range(0f, 0.95f)] private float backgroundExitStartNormalized = 0.58f;
-        [SerializeField, Range(0.05f, 1f)] private float characterExitFadeSpanNormalized = 0.3f;
-        [SerializeField, Min(1)] private int exitCharacterGroupSize = 2;
+        [SerializeField, Range(0.1f, 1f)]
+        private float textExitEndNormalized = 0.72f;
+
+        [SerializeField, Range(0f, 0.95f)]
+        private float backgroundExitStartNormalized = 0.58f;
+
+        [SerializeField, Range(0.05f, 1f)]
+        private float characterExitFadeSpanNormalized = 0.3f;
+
+        [SerializeField, Min(1)]
+        private int exitCharacterGroupSize = 2;
 
         #endregion
 
@@ -77,7 +117,10 @@ namespace KLTN.Game.Presentation
 
         private void Awake()
         {
-            if (!HasRequiredReferences()) { return; }
+            if (!HasRequiredReferences())
+            {
+                return;
+            }
 
             Initialize();
             HideVisualImmediate();
@@ -97,20 +140,12 @@ namespace KLTN.Game.Presentation
 
         public IEnumerator PlayYourTurn()
         {
-            yield return Play(
-                "Lượt của bạn",
-                yourTurnColor,
-                SlideOrigin.Right
-            );
+            yield return Play("Lượt của bạn", yourTurnColor, SlideOrigin.Right);
         }
 
-        public IEnumerator PlayRoundEnd(int roundNumber)
+        public IEnumerator PlayRoundStart(int roundNumber)
         {
-            yield return Play(
-                $"Kết thúc vòng {roundNumber}",
-                roundEndColor,
-                SlideOrigin.Left
-            );
+            yield return Play($"Vòng {roundNumber}", roundStartColor, SlideOrigin.Left);
         }
 
         #endregion
@@ -128,7 +163,10 @@ namespace KLTN.Game.Presentation
                 yield break;
             }
 
-            while (IsPlaying) { yield return null; }
+            while (IsPlaying)
+            {
+                yield return null;
+            }
 
             IsPlaying = true;
             SetGameplayBlocked(true);
@@ -197,14 +235,26 @@ namespace KLTN.Game.Presentation
 
         #region Animation Frames
 
-        private void ApplyEnterFrame(float normalizedTime, float direction, float travelDistance)
+        private void ApplyEnterFrame(
+            float normalizedTime,
+            float direction,
+            float travelDistance
+        )
         {
             float backgroundProgress = EaseOutCubic(normalizedTime);
-            float opacityProgress = Mathf.Clamp01(normalizedTime / Mathf.Max(0.01f, fullOpacityAt));
-            float textProgress = Mathf.InverseLerp(textRevealStartNormalized, 1f, normalizedTime);
+            float opacityProgress = Mathf.Clamp01(
+                normalizedTime / Mathf.Max(0.01f, fullOpacityAt)
+            );
+            float textProgress = Mathf.InverseLerp(
+                textRevealStartNormalized,
+                1f,
+                normalizedTime
+            );
 
-            Vector2 bannerStart = bannerRestPosition + Vector2.right * direction * travelDistance;
-            Vector2 textStart = textRestPosition + Vector2.right * direction * textTravelDistance;
+            Vector2 bannerStart =
+                bannerRestPosition + Vector2.right * direction * travelDistance;
+            Vector2 textStart =
+                textRestPosition + Vector2.right * direction * textTravelDistance;
 
             bannerRoot.anchoredPosition = Vector2.LerpUnclamped(
                 bannerStart,
@@ -222,7 +272,11 @@ namespace KLTN.Game.Presentation
             ApplyCharacterReveal(textProgress);
         }
 
-        private void ApplyExitFrame(float normalizedTime, float direction, float travelDistance)
+        private void ApplyExitFrame(
+            float normalizedTime,
+            float direction,
+            float travelDistance
+        )
         {
             float textProgress = Mathf.Clamp01(
                 normalizedTime / Mathf.Max(0.01f, textExitEndNormalized)
@@ -234,8 +288,10 @@ namespace KLTN.Game.Presentation
                 normalizedTime
             );
 
-            Vector2 bannerEnd = bannerRestPosition + Vector2.right * direction * travelDistance;
-            Vector2 textEnd = textRestPosition + Vector2.right * direction * textTravelDistance;
+            Vector2 bannerEnd =
+                bannerRestPosition + Vector2.right * direction * travelDistance;
+            Vector2 textEnd =
+                textRestPosition + Vector2.right * direction * textTravelDistance;
 
             textRoot.anchoredPosition = Vector2.LerpUnclamped(
                 textRestPosition,
@@ -268,7 +324,10 @@ namespace KLTN.Game.Presentation
             {
                 TMP_CharacterInfo characterInfo = label.textInfo.characterInfo[i];
 
-                if (!characterInfo.isVisible) { continue; }
+                if (!characterInfo.isVisible)
+                {
+                    continue;
+                }
 
                 int materialIndex = characterInfo.materialReferenceIndex;
                 int vertexIndex = characterInfo.vertexIndex;
@@ -340,13 +399,16 @@ namespace KLTN.Game.Presentation
 
         private void SetCharacterAlpha(int characterIndex, float normalizedAlpha)
         {
-            TMP_CharacterInfo characterInfo = label.textInfo.characterInfo[characterIndex];
+            TMP_CharacterInfo characterInfo = label.textInfo.characterInfo[
+                characterIndex
+            ];
             int materialIndex = characterInfo.materialReferenceIndex;
             int vertexIndex = characterInfo.vertexIndex;
             Color32[] colors = label.textInfo.meshInfo[materialIndex].colors32;
 
             byte baseAlpha = baseCharacterAlphas[characterIndex];
-            byte alpha = (byte)Mathf.RoundToInt(baseAlpha * Mathf.Clamp01(normalizedAlpha));
+            byte alpha = (byte)
+                Mathf.RoundToInt(baseAlpha * Mathf.Clamp01(normalizedAlpha));
 
             for (int i = 0; i < 4; i++)
             {
@@ -358,7 +420,10 @@ namespace KLTN.Game.Presentation
 
         private static float CharacterStart(int order, int count, float fadeSpan)
         {
-            if (count <= 1) { return 0f; }
+            if (count <= 1)
+            {
+                return 0f;
+            }
 
             return (1f - fadeSpan) * order / (count - 1f);
         }
@@ -397,7 +462,10 @@ namespace KLTN.Game.Presentation
 
         private void Initialize()
         {
-            if (initialized) { return; }
+            if (initialized)
+            {
+                return;
+            }
 
             bannerRestPosition = bannerRoot.anchoredPosition;
             textRestPosition = textRoot.anchoredPosition;
@@ -406,7 +474,10 @@ namespace KLTN.Game.Presentation
 
         private void HideVisualImmediate()
         {
-            if (!initialized) { return; }
+            if (!initialized)
+            {
+                return;
+            }
 
             bannerRoot.anchoredPosition = bannerRestPosition;
             textRoot.anchoredPosition = textRestPosition;
@@ -415,7 +486,10 @@ namespace KLTN.Game.Presentation
 
         private void SetGameplayBlocked(bool blocked)
         {
-            if (gameplayInputBlocker != null) { gameplayInputBlocker.SetActive(blocked); }
+            if (gameplayInputBlocker != null)
+            {
+                gameplayInputBlocker.SetActive(blocked);
+            }
         }
 
         #endregion
@@ -430,13 +504,13 @@ namespace KLTN.Game.Presentation
 
         private bool HasRequiredReferences()
         {
-            return canvasRoot != null &&
-                   bannerRoot != null &&
-                   textRoot != null &&
-                   bannerCanvasGroup != null &&
-                   backgroundImage != null &&
-                   label != null &&
-                   gameplayInputBlocker != null;
+            return canvasRoot != null
+                && bannerRoot != null
+                && textRoot != null
+                && bannerCanvasGroup != null
+                && backgroundImage != null
+                && label != null
+                && gameplayInputBlocker != null;
         }
 
         private static float EaseOutCubic(float value)

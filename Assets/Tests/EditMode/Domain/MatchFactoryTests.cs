@@ -13,10 +13,12 @@ namespace KLTN.Game.Domain.Tests
         {
             var factory = new MatchFactory(new SeededRandomSource(123));
 
-            MatchState state = factory.Create(Definitions(), 20, 4);
+            IReadOnlyList<CardDefinition> deck = DefaultDeckBuilder.Build(Definitions());
 
-            Assert.AreEqual(4, state.Host.Hand.Count);
-            Assert.AreEqual(4, state.Guest.Hand.Count);
+            MatchState state = factory.Create(deck, deck, 4);
+
+            Assert.AreEqual(4, state.Host.DrawHand.Count);
+            Assert.AreEqual(4, state.Guest.DrawHand.Count);
 
             Assert.AreEqual(16, state.Host.Deck.Count);
             Assert.AreEqual(16, state.Guest.Deck.Count);
@@ -27,7 +29,9 @@ namespace KLTN.Game.Domain.Tests
         {
             var factory = new MatchFactory(new SeededRandomSource(123));
 
-            MatchState state = factory.Create(Definitions(), 20, 4);
+            IReadOnlyList<CardDefinition> deck = DefaultDeckBuilder.Build(Definitions());
+
+            MatchState state = factory.Create(deck, deck, 4);
 
             var ids = new HashSet<ulong>();
 
@@ -42,10 +46,12 @@ namespace KLTN.Game.Domain.Tests
         {
             var factory = new MatchFactory(new SeededRandomSource(123));
 
-            MatchState state = factory.Create(Definitions(), 20, 4);
+            IReadOnlyList<CardDefinition> deck = DefaultDeckBuilder.Build(Definitions());
 
-            CardInstance hostCard = state.Host.Hand[0];
-            CardInstance guestCard = state.Guest.Hand[0];
+            MatchState state = factory.Create(deck, deck, 4);
+
+            CardInstance hostCard = state.Host.DrawHand[0];
+            CardInstance guestCard = state.Guest.DrawHand[0];
 
             int guestHealthBefore = guestCard.CurrentHealth;
 
@@ -63,7 +69,7 @@ namespace KLTN.Game.Domain.Tests
             return new List<CardDefinition>
             {
                 new CardDefinition("ma_co", "Ma Cơ", 3, 2, 3),
-                new CardDefinition("ma_da", "Ma Da", 1, 3, 2)
+                new CardDefinition("ma_da", "Ma Da", 1, 3, 2),
             };
         }
 
@@ -74,7 +80,7 @@ namespace KLTN.Game.Domain.Tests
                 Assert.IsTrue(ids.Add(card.InstanceId));
             }
 
-            foreach (CardInstance card in player.Hand)
+            foreach (CardInstance card in player.DrawHand)
             {
                 Assert.IsTrue(ids.Add(card.InstanceId));
             }
@@ -85,6 +91,10 @@ namespace KLTN.Game.Domain.Tests
             }
 
             foreach (CardInstance card in player.Graveyard)
+            {
+                Assert.IsTrue(ids.Add(card.InstanceId));
+            }
+            foreach (CardInstance card in player.Reserve)
             {
                 Assert.IsTrue(ids.Add(card.InstanceId));
             }

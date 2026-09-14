@@ -8,27 +8,65 @@ namespace KLTN.Game.Networking
     {
         #region Fields
 
-        private readonly IReadOnlyDictionary<string, CardDefinition>
-            definitionsById;
+        private readonly IReadOnlyDictionary<string, CardDefinition> definitionsById;
+
+        private readonly AbilityTargetValidator abilityTargetValidator =
+            new AbilityTargetValidator();
 
         #endregion
 
         #region Construction
 
-        public MatchSnapshotBuilder(IReadOnlyDictionary<string, CardDefinition> definitionsById)
+        public MatchSnapshotBuilder(
+            IReadOnlyDictionary<string, CardDefinition> definitionsById
+        )
         {
-            this.definitionsById = definitionsById ??
-                throw new ArgumentNullException(nameof(definitionsById));
+            this.definitionsById =
+                definitionsById
+                ?? throw new ArgumentNullException(nameof(definitionsById));
         }
 
         #endregion
 
         #region Snapshot Construction
 
-        public MatchSnapshotDto Build(MatchState state, SeatId viewerSeat, bool opponentConnected, ulong revision)
+        public MatchSnapshotDto Build(
+            MatchState state,
+            SeatId viewerSeat,
+            bool opponentConnected,
+            ulong revision
+        )
         {
             PlayerState self = state.Player(viewerSeat);
             PlayerState opponent = state.Player(viewerSeat.Opponent());
+
+            bool viewerCanAct =
+                opponentConnected
+                && !state.IsFinished
+                && state.Phase == MatchPhase.Priority
+                && state.ActiveSeat == viewerSeat;
+
+            bool viewerCanDeclareAttack =
+                viewerCanAct
+                && state.AttackTokenAvailable
+                && state.AttackTokenOwner == viewerSeat
+                && self.Reserve.Count > 0
+                && self.Board.Count == 0;
+
+            bool viewerCanDeclareBlock =
+                opponentConnected
+                && !state.IsFinished
+                && state.Phase == MatchPhase.BlockDeclaration
+                && state.ActiveSeat == viewerSeat
+                && state.AttackTokenOwner != viewerSeat
+                && opponent.Board.Count > 0;
+
+            PendingAbilitySelectionDto pendingSelection = BuildPendingSelection(
+                state,
+                viewerSeat
+            );
+
+            bool viewerMustSelectAbilityTargets = pendingSelection != null;
 
             return new MatchSnapshotDto
             {
@@ -38,26 +76,42 @@ namespace KLTN.Game.Networking
                 firstSeat = (int)state.FirstSeat,
                 activeSeat = (int)state.ActiveSeat,
                 roundNumber = state.RoundNumber,
-                actionsCompletedInRound = state.ActionsCompletedInRound,
+
+                phase = (int)state.Phase,
+                attackTokenOwner = (int)state.AttackTokenOwner,
+                attackTokenAvailable = state.AttackTokenAvailable,
+                consecutivePasses = state.ConsecutivePasses,
+
                 outcome = (int)state.Outcome,
-                viewerCanAct = opponentConnected &&
-                               !state.IsFinished &&
-                               state.ActiveSeat == viewerSeat,
-                self = BuildPlayer(
-                    self,
-                    revealHand: true,
-                    connected: true
-                ),
+                viewerCanAct = viewerCanAct,
+
+                viewerCanEndRound = viewerCanAct && state.CanEndRound,
+
+                viewerCanDeclareAttack = viewerCanDeclareAttack,
+                viewerCanDeclareBlock = viewerCanDeclareBlock,
+
+                viewerMustSelectAbilityTargets = viewerMustSelectAbilityTargets,
+
+                pendingAbilitySelection = pendingSelection,
+
+                self = BuildPlayer(state, self, revealHand: true, connected: true),
+
                 opponent = BuildPlayer(
+                    state,
                     opponent,
                     revealHand: false,
                     connected: opponentConnected
                 ),
-                status = state.LastEvent
+
+                status = state.LastEvent,
             };
         }
 
-        public static MatchSnapshotDto BuildWaiting(SeatId viewerSeat, bool opponentConnected, ulong revision)
+        public static MatchSnapshotDto BuildWaiting(
+            SeatId viewerSeat,
+            bool opponentConnected,
+            ulong revision
+        )
         {
             SeatId opponentSeat = viewerSeat.Opponent();
 
@@ -69,14 +123,28 @@ namespace KLTN.Game.Networking
                 firstSeat = -1,
                 activeSeat = -1,
                 roundNumber = 0,
-                actionsCompletedInRound = 0,
+
+                phase = (int)MatchPhase.Mulligan,
+                attackTokenOwner = -1,
+                attackTokenAvailable = false,
+                consecutivePasses = 0,
+
                 outcome = (int)MatchOutcome.Running,
                 viewerCanAct = false,
+                viewerCanEndRound = false,
+                viewerCanDeclareAttack = false,
+                viewerCanDeclareBlock = false,
+
+                viewerMustSelectAbilityTargets = false,
+                pendingAbilitySelection = null,
+
                 self = BuildWaitingPlayer(viewerSeat, connected: true),
+
                 opponent = BuildWaitingPlayer(opponentSeat, opponentConnected),
+
                 status = opponentConnected
                     ? "Đang khởi tạo trận đấu."
-                    : "Đang chờ người chơi còn lại."
+                    : "Đang chờ người chơi còn lại.",
             };
         }
 
@@ -84,7 +152,80 @@ namespace KLTN.Game.Networking
 
         #region Player and Card Mapping
 
-        private PlayerViewDto BuildPlayer(PlayerState player, bool revealHand, bool connected)
+        private PendingAbilitySelectionDto BuildPendingSelection(
+            MatchState state,
+            SeatId viewerSeat
+        )
+        {
+            PendingAbilitySelection pending = state.PendingSelection;
+
+            if (pending == null || pending.ChoosingSeat != viewerSeat)
+            {
+                return null;
+            }
+
+            var requirements = new AbilityTargetRequirementDto[
+                pending.Ability.RequiredTargets.Count
+            ];
+
+            for (int i = 0; i < pending.Ability.RequiredTargets.Count; i++)
+            {
+                AbilityTargetRequirement requirement = pending.Ability.RequiredTargets[i];
+
+                IReadOnlyList<CardInstance> validTargets =
+                    abilityTargetValidator.GetValidTargets(
+                        state,
+                        pending.ChoosingSeat,
+                        pending.SourceCardInstanceId,
+                        requirement
+                    );
+
+                var validTargetIds = new string[validTargets.Count];
+
+                for (int targetIndex = 0; targetIndex < validTargets.Count; targetIndex++)
+                {
+                    validTargetIds[targetIndex] = validTargets[targetIndex]
+                        .InstanceId.ToString();
+                }
+
+                requirements[i] = new AbilityTargetRequirementDto
+                {
+                    slot = (int)requirement.Slot,
+
+                    relation = (int)requirement.Relation,
+
+                    zones = (int)requirement.Zones,
+
+                    count = requirement.Count,
+
+                    excludeSource = requirement.ExcludeSource,
+
+                    validTargetIds = validTargetIds,
+                };
+            }
+
+            return new PendingAbilitySelectionDto
+            {
+                requestId = pending.RequestId.ToString(),
+
+                sourceCardInstanceId = pending.SourceCardInstanceId.ToString(),
+
+                choosingSeat = (int)pending.ChoosingSeat,
+
+                abilityId = pending.Ability.Id,
+
+                canCancel = pending.CanCancel,
+
+                requirements = requirements,
+            };
+        }
+
+        private PlayerViewDto BuildPlayer(
+            MatchState state,
+            PlayerState player,
+            bool revealHand,
+            bool connected
+        )
         {
             return new PlayerViewDto
             {
@@ -96,41 +237,109 @@ namespace KLTN.Game.Networking
                 mana = player.Mana,
                 maxMana = player.MaxMana,
                 deckCount = player.Deck.Count,
-                handCount = player.Hand.Count,
+
+                handCount = player.DrawHand.Count,
+                reserveCount = player.Reserve.Count,
+                activeRosterCount = player.ActiveRosterCount,
 
                 hand = revealHand
-                    ? ConvertCards(player.Hand)
+                    ? ConvertCards(state, player.DrawHand)
                     : Array.Empty<CardViewDto>(),
 
-                board = ConvertCards(player.Board)
+                reserve = ConvertCards(state, player.Reserve),
+
+                board = ConvertCards(state, player.Board),
             };
         }
 
-        private CardViewDto[] ConvertCards(IReadOnlyList<CardInstance> cards)
+        private CardViewDto[] ConvertCards(
+            MatchState state,
+            IReadOnlyList<CardInstance> cards
+        )
         {
             var result = new CardViewDto[cards.Count];
 
             for (int i = 0; i < cards.Count; i++)
             {
                 CardInstance instance = cards[i];
-                definitionsById.TryGetValue(instance.DefinitionId, out CardDefinition definition);
+                definitionsById.TryGetValue(
+                    instance.DefinitionId,
+                    out CardDefinition definition
+                );
+
+                GetSupportBuffPreview(
+                    definition,
+                    out int supportDamageBonus,
+                    out int supportHealthBonus
+                );
 
                 result[i] = new CardViewDto
                 {
                     instanceId = instance.InstanceId.ToString(),
                     definitionId = instance.DefinitionId,
-                    displayName = definition?.DisplayName ??
-                                  "Unknown card",
+                    displayName = definition?.DisplayName ?? "Unknown card",
 
                     health = instance.CurrentHealth,
-                    damage = definition?.BaseDamage ?? 0,
-                    energy = definition?.Cost ?? 0,
 
-                    boardSlotIndex = instance.BoardSlotIndex
+                    damage = definition == null ? 0 : instance.GetDamage(definition),
+
+                    energy =
+                        definition == null
+                            ? 0
+                            : CardCostCalculator.GetEffectiveCost(
+                                state,
+                                instance,
+                                definition
+                            ),
+
+                    keywords = definition == null ? 0 : (int)definition.Keywords,
+
+                    supportDamageBonus = supportDamageBonus,
+                    supportHealthBonus = supportHealthBonus,
+
+                    boardSlotIndex = instance.BoardSlotIndex,
                 };
             }
 
             return result;
+        }
+
+        private static void GetSupportBuffPreview(
+            CardDefinition definition,
+            out int damageBonus,
+            out int healthBonus
+        )
+        {
+            damageBonus = 0;
+            healthBonus = 0;
+
+            if (definition == null)
+            {
+                return;
+            }
+
+            foreach (AbilityDefinition ability in definition.Abilities)
+            {
+                if (ability.Trigger != AbilityTrigger.Support)
+                {
+                    continue;
+                }
+
+                foreach (EffectDefinition effect in ability.Effects)
+                {
+                    bool isSupportedUnitBuff =
+                        effect.Kind == EffectKind.Buff
+                        && effect.Target == EffectTarget.TriggerSubject;
+
+                    if (!isSupportedUnitBuff)
+                    {
+                        continue;
+                    }
+
+                    damageBonus += effect.Amount;
+                    healthBonus += effect.SecondaryAmount;
+                }
+            }
         }
 
         private static PlayerViewDto BuildWaitingPlayer(SeatId seat, bool connected)
@@ -146,9 +355,12 @@ namespace KLTN.Game.Networking
                 maxMana = 0,
                 deckCount = 0,
                 handCount = 0,
+                reserveCount = 0,
+                activeRosterCount = 0,
 
                 hand = Array.Empty<CardViewDto>(),
-                board = Array.Empty<CardViewDto>()
+                reserve = Array.Empty<CardViewDto>(),
+                board = Array.Empty<CardViewDto>(),
             };
         }
 

@@ -13,7 +13,33 @@ MonoBehaviour:
   m_Name: VongNhi
   m_EditorClassIdentifier: Assembly-CSharp::CMCMProductions.Card
   cardName: Vong Nhi
+  rulesText: "Khi m\u1ED9t \u0111\u1ED3ng minh kh\xE1c ch\u1EBFt, g\xE2y 1 s\xE1t
+    th\u01B0\u01A1ng l\xEAn Nexus \u0111\u1ECBch."
   cardType: 05000000
   health: 3
   damage: 0
   energy: 3
+  keywords: 0
+  abilities:
+  - abilityId: vong_nhi_ally_death
+    trigger: 6
+    condition: 0
+    oncePerRound: 0
+    oncePerMatch: 0
+    missingTargetPolicy: 0
+    requiredTargets: []
+    effects:
+    - kind: 0
+      target: 7
+      amount: 1
+      secondaryAmount: 0
+      count: 1
+      duration: 0
+      cardDefinitionId: 
+  passiveRules:
+    costReductionPerAlliedDeathThisGame: 0
+    revivesAtRoundStart: 0
+    powerAndHealthPerDeath: 0
+    joinsAttackFromGraveyard: 0
+    requiresEphemeralAttacker: 0
+  maximumCopiesPerDeck: 0

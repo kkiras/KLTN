@@ -13,7 +13,33 @@ MonoBehaviour:
   m_Name: MaCo
   m_EditorClassIdentifier: Assembly-CSharp::CMCMProductions.Card
   cardName: "Ma C\u01A1"
+  rulesText: "Summon: t\u1EA1o trong DrawHand m\u1ED9t b\u1EA3n sao ng\u1EABu nhi\xEAn
+    c\u1EE7a \u0111\u1ED3ng minh \u0111\xE3 ch\u1EBFt trong tr\u1EADn n\xE0y."
   cardType: 00000000
   health: 3
   damage: 2
   energy: 3
+  keywords: 0
+  abilities:
+  - abilityId: ma_co_summon
+    trigger: 1
+    condition: 0
+    oncePerRound: 0
+    oncePerMatch: 0
+    missingTargetPolicy: 0
+    requiredTargets: []
+    effects:
+    - kind: 7
+      target: 12
+      amount: 0
+      secondaryAmount: 0
+      count: 1
+      duration: 0
+      cardDefinitionId: 
+  passiveRules:
+    costReductionPerAlliedDeathThisGame: 0
+    revivesAtRoundStart: 0
+    powerAndHealthPerDeath: 0
+    joinsAttackFromGraveyard: 0
+    requiresEphemeralAttacker: 0
+  maximumCopiesPerDeck: 0

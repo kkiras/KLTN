@@ -25,7 +25,7 @@ namespace KLTN.Game.Presentation
 
             if (card == null || !card.IsPending) { return; }
 
-            controls.TryReturnPendingCard(card);
+            controls.TryReturnPendingSummon(card);
         }
 
         #endregion

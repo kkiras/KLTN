@@ -9,11 +9,17 @@ public class MulliganCardToggle : MonoBehaviour, IPointerClickHandler
     public bool isSelected = false;
 
     private Vector3 originalScale;
+    private GameObject replaceSpinnerOverlay;
 
     private void Start()
     {
-
         originalScale = transform.localScale;
+        Transform spinnerTransform = transform.Find("VisualRoot/ReplaceSpinnerOverlay");
+        if (spinnerTransform != null)
+        {
+            replaceSpinnerOverlay = spinnerTransform.gameObject;
+            replaceSpinnerOverlay.SetActive(isSelected); 
+        }
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -27,6 +33,10 @@ public class MulliganCardToggle : MonoBehaviour, IPointerClickHandler
             replaceOverlay.gameObject.SetActive(isSelected);
         }
 
+        if (replaceSpinnerOverlay != null)
+        {
+            replaceSpinnerOverlay.SetActive(isSelected);
+        }
 
         CanvasGroup canvasGroup = GetComponent<CanvasGroup>();
         if (canvasGroup == null)
@@ -37,7 +47,7 @@ public class MulliganCardToggle : MonoBehaviour, IPointerClickHandler
         if (isSelected)
         {
 
-            canvasGroup.alpha = 0.4f;
+            canvasGroup.alpha = 0.75f;
             transform.localScale = originalScale * 0.85f;
         }
         else

@@ -7,12 +7,18 @@ public sealed class LoginUI : MonoBehaviour
     #region Serialized Fields
 
     [Header("Inputs")]
-    [SerializeField] private TMP_InputField emailInput;
-    [SerializeField] private TMP_InputField passwordInput;
+    [SerializeField]
+    private TMP_InputField emailInput;
+
+    [SerializeField]
+    private TMP_InputField passwordInput;
 
     [Header("UI State")]
-    [SerializeField] private AuthUIManager authUIManager;
-    [SerializeField] private AuthFeedbackView feedbackView;
+    [SerializeField]
+    private AuthUIManager authUIManager;
+
+    [SerializeField]
+    private AuthFeedbackView feedbackView;
 
     #endregion
 
@@ -28,12 +34,18 @@ public sealed class LoginUI : MonoBehaviour
     {
         feedbackView?.Clear();
 
-        if (passwordInput != null) { passwordInput.onSubmit.AddListener(OnPasswordSubmitted); }
+        if (passwordInput != null)
+        {
+            passwordInput.onSubmit.AddListener(OnPasswordSubmitted);
+        }
     }
 
     private void OnDisable()
     {
-        if (passwordInput != null) { passwordInput.onSubmit.RemoveListener(OnPasswordSubmitted); }
+        if (passwordInput != null)
+        {
+            passwordInput.onSubmit.RemoveListener(OnPasswordSubmitted);
+        }
     }
 
     #endregion
@@ -42,8 +54,7 @@ public sealed class LoginUI : MonoBehaviour
 
     public async void OnLoginButtonClicked()
     {
-        if (authUIManager == null ||
-            authUIManager.IsBusy)
+        if (authUIManager == null || authUIManager.IsBusy)
         {
             return;
         }
@@ -52,32 +63,56 @@ public sealed class LoginUI : MonoBehaviour
         string password = passwordInput.text;
         feedbackView?.Clear();
 
-        if (!AuthInputValidator.TryValidateLogin(email, password, out string validationError))
+        if (
+            !AuthInputValidator.TryValidateLogin(
+                email,
+                password,
+                out string validationError
+            )
+        )
         {
             feedbackView?.ShowError(validationError);
             return;
         }
 
-        if (!authUIManager.TryBeginOperation("Đang đăng nhập...")) { return; }
+        if (!authUIManager.TryBeginOperation("Đang đăng nhập..."))
+        {
+            return;
+        }
 
         try
         {
-            AuthResultData result = await AuthManager.Instance.ProcessLogin(email, password);
+            AuthResultData result = await AuthManager.Instance.ProcessLogin(
+                email,
+                password
+            );
 
             // Login success causes AppFlowManager to load MainMenu.
-            if (this == null) { return; }
+            if (this == null)
+            {
+                return;
+            }
 
-            if (!result.Success) { feedbackView?.ShowError(GetSafeErrorMessage(result)); }
+            if (!result.Success)
+            {
+                feedbackView?.ShowError(GetSafeErrorMessage(result));
+            }
         }
         catch (Exception exception)
         {
             Debug.LogException(exception);
 
-            if (this != null) { feedbackView?.ShowError("Đăng nhập thất bại. Vui lòng thử lại."); }
+            if (this != null)
+            {
+                feedbackView?.ShowError("Đăng nhập thất bại. Vui lòng thử lại.");
+            }
         }
         finally
         {
-            if (authUIManager != null) { authUIManager.EndOperation(); }
+            if (authUIManager != null)
+            {
+                authUIManager.EndOperation();
+            }
         }
     }
 
@@ -107,7 +142,10 @@ public sealed class LoginUI : MonoBehaviour
 
     private static string GetSafeErrorMessage(AuthResultData result)
     {
-        if (!string.IsNullOrWhiteSpace(result.ErrorMessage)) { return result.ErrorMessage; }
+        if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+        {
+            return result.ErrorMessage;
+        }
 
         return "Đăng nhập thất bại. Vui lòng thử lại.";
     }

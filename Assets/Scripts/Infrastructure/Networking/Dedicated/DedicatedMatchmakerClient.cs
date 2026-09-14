@@ -23,14 +23,24 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
     #region Configuration
 
     [Header("Matchmaker")]
-    [SerializeField] private string queueName = "boardgame-queue";
+    [SerializeField]
+    private string queueName = "boardgame-queue";
 
     [Header("UI")]
-    [SerializeField] private Button matchmakingButton;
-    [SerializeField] private TMP_Text actionLabel;
-    [SerializeField] private TMP_Text findingMatchLabel;
-    [SerializeField] private TMP_Text timerLabel;
-    [SerializeField] private TMP_Text statusLabel;
+    [SerializeField]
+    private Button matchmakingButton;
+
+    [SerializeField]
+    private TMP_Text actionLabel;
+
+    [SerializeField]
+    private TMP_Text findingMatchLabel;
+
+    [SerializeField]
+    private TMP_Text timerLabel;
+
+    [SerializeField]
+    private TMP_Text statusLabel;
 
     #endregion
 
@@ -67,7 +77,10 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
 
     private void OnDisable()
     {
-        if (matchmakingButton != null) { matchmakingButton.onClick.RemoveListener(ToggleMatchmaking); }
+        if (matchmakingButton != null)
+        {
+            matchmakingButton.onClick.RemoveListener(ToggleMatchmaking);
+        }
 
         NetworkManager networkManager = NetworkManager.Singleton;
 
@@ -82,13 +95,19 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
 
     private void Update()
     {
-        if (!isSearching) { return; }
+        if (!isSearching)
+        {
+            return;
+        }
 
         elapsedTime += Time.deltaTime;
         int minutes = Mathf.FloorToInt(elapsedTime / 60f);
         int seconds = Mathf.FloorToInt(elapsedTime % 60f);
 
-        if (timerLabel != null) { timerLabel.text = $"{minutes:00}:{seconds:00}"; }
+        if (timerLabel != null)
+        {
+            timerLabel.text = $"{minutes:00}:{seconds:00}";
+        }
     }
 
     #endregion
@@ -111,7 +130,10 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
         await CancelSearchAsync();
         NetworkManager networkManager = NetworkManager.Singleton;
 
-        if (networkManager != null && networkManager.IsListening) { networkManager.Shutdown(); }
+        if (networkManager != null && networkManager.IsListening)
+        {
+            networkManager.Shutdown();
+        }
 
         SceneManager.LoadScene(SceneNames.MainMenu);
     }
@@ -152,22 +174,19 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
         {
             string publicIp = await PublicIpResolver.ResolveAsync(cancellationToken);
 
-            var customData = new Dictionary<string, object>
-            {
-                ["player_ip"] = publicIp,
-            };
+            var customData = new Dictionary<string, object> { ["player_ip"] = publicIp };
 
             var players = new List<Player>
             {
-                new Player(
-                    AuthenticationService.Instance.PlayerId,
-                    customData),
+                new Player(AuthenticationService.Instance.PlayerId, customData),
             };
             ShowSearchingState("ĐANG TẠO TICKET:");
 
-            CreateTicketResponse ticket = await MatchmakerService.Instance.CreateTicketAsync(
-                players,
-                new CreateTicketOptions(queueName));
+            CreateTicketResponse ticket =
+                await MatchmakerService.Instance.CreateTicketAsync(
+                    players,
+                    new CreateTicketOptions(queueName)
+                );
             activeTicketId = ticket.Id;
             Debug.Log($"Created matchmaker ticket: {activeTicketId}");
             ShowSearchingState("ĐANG TÌM ĐỐI THỦ:");
@@ -196,20 +215,25 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
             {
                 SetActionLabel("Tìm trận");
 
-                if (matchmakingButton != null) { matchmakingButton.interactable = true; }
+                if (matchmakingButton != null)
+                {
+                    matchmakingButton.interactable = true;
+                }
             }
         }
     }
 
-    private async Task<IpPortAssignment> WaitForAssignmentAsync(CancellationToken cancellationToken)
+    private async Task<IpPortAssignment> WaitForAssignmentAsync(
+        CancellationToken cancellationToken
+    )
     {
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            TicketStatusResponse ticketStatus = await MatchmakerService.Instance.GetTicketAsync(activeTicketId);
+            TicketStatusResponse ticketStatus =
+                await MatchmakerService.Instance.GetTicketAsync(activeTicketId);
 
-            if (ticketStatus == null ||
-                ticketStatus.Type == typeof(NoneAssignment))
+            if (ticketStatus == null || ticketStatus.Type == typeof(NoneAssignment))
             {
                 await Task.Delay(PollDelayMilliseconds, cancellationToken);
                 continue;
@@ -217,11 +241,15 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
 
             if (ticketStatus.Type != typeof(IpPortAssignment))
             {
-                throw new InvalidOperationException($"Unexpected assignment type: {ticketStatus.Type}");
+                throw new InvalidOperationException(
+                    $"Unexpected assignment type: {ticketStatus.Type}"
+                );
             }
 
             var assignment = (IpPortAssignment)ticketStatus.Value;
-            Debug.Log($"Assignment status: {assignment.Status}; message: {assignment.Message}");
+            Debug.Log(
+                $"Assignment status: {assignment.Status}; message: {assignment.Message}"
+            );
 
             switch (assignment.Status)
             {
@@ -230,10 +258,14 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
                     return assignment;
 
                 case IpPortAssignment.StatusOptions.Failed:
-                    throw new InvalidOperationException(assignment.Message ?? "Matchmaker assignment failed.");
+                    throw new InvalidOperationException(
+                        assignment.Message ?? "Matchmaker assignment failed."
+                    );
 
                 case IpPortAssignment.StatusOptions.Timeout:
-                    throw new TimeoutException(assignment.Message ?? "Matchmaker assignment timed out.");
+                    throw new TimeoutException(
+                        assignment.Message ?? "Matchmaker assignment timed out."
+                    );
 
                 case IpPortAssignment.StatusOptions.InProgress:
                     ShowSearchingState("ĐANG KHỞI TẠO SERVER:");
@@ -243,7 +275,8 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
                     throw new ArgumentOutOfRangeException(
                         nameof(assignment.Status),
                         assignment.Status,
-                        "Unknown assignment status.");
+                        "Unknown assignment status."
+                    );
             }
 
             await Task.Delay(PollDelayMilliseconds, cancellationToken);
@@ -252,11 +285,18 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
 
     private static void ValidateAssignment(IpPortAssignment assignment)
     {
-        if (string.IsNullOrWhiteSpace(assignment.Ip)) { throw new InvalidOperationException("Assignment does not contain an IP address."); }
+        if (string.IsNullOrWhiteSpace(assignment.Ip))
+        {
+            throw new InvalidOperationException(
+                "Assignment does not contain an IP address."
+            );
+        }
 
-        if (!assignment.Port.HasValue ||
-            assignment.Port.Value <= 0 ||
-            assignment.Port.Value > ushort.MaxValue)
+        if (
+            !assignment.Port.HasValue
+            || assignment.Port.Value <= 0
+            || assignment.Port.Value > ushort.MaxValue
+        )
         {
             throw new InvalidOperationException("Assignment contains an invalid port.");
         }
@@ -277,7 +317,9 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
             }
             catch (Exception exception)
             {
-                Debug.LogWarning($"Could not delete ticket {ticketId}: " + exception.Message);
+                Debug.LogWarning(
+                    $"Could not delete ticket {ticketId}: " + exception.Message
+                );
             }
         }
 
@@ -286,7 +328,10 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
         SetActionLabel("Tìm trận");
         ShowResultState("Đã hủy tìm trận.");
 
-        if (matchmakingButton != null) { matchmakingButton.interactable = true; }
+        if (matchmakingButton != null)
+        {
+            matchmakingButton.interactable = true;
+        }
     }
 
     #endregion
@@ -298,7 +343,12 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
         NetworkManager networkManager = NetworkManager.Singleton;
         UnityTransport transport = networkManager.GetComponent<UnityTransport>();
 
-        if (transport == null) { throw new InvalidOperationException("NetworkManager does not contain UnityTransport."); }
+        if (transport == null)
+        {
+            throw new InvalidOperationException(
+                "NetworkManager does not contain UnityTransport."
+            );
+        }
 
         ushort port = checked((ushort)assignment.Port.Value);
         Debug.Log($"Connecting to Edgegap endpoint {assignment.Ip}:{port}");
@@ -307,12 +357,17 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
         SetActionLabel("Đang kết nối");
         ShowResultState("Đã tìm thấy trận. Đang kết nối server...");
 
-        if (matchmakingButton != null) { matchmakingButton.interactable = false; }
+        if (matchmakingButton != null)
+        {
+            matchmakingButton.interactable = false;
+        }
 
         if (!networkManager.StartClient())
         {
             isConnecting = false;
-            throw new InvalidOperationException("NetworkManager.StartClient returned false.");
+            throw new InvalidOperationException(
+                "NetworkManager.StartClient returned false."
+            );
         }
     }
 
@@ -320,8 +375,7 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
     {
         NetworkManager networkManager = NetworkManager.Singleton;
 
-        if (networkManager == null ||
-            clientId != networkManager.LocalClientId)
+        if (networkManager == null || clientId != networkManager.LocalClientId)
         {
             return;
         }
@@ -337,8 +391,7 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
     {
         NetworkManager networkManager = NetworkManager.Singleton;
 
-        if (networkManager == null ||
-            clientId != networkManager.LocalClientId)
+        if (networkManager == null || clientId != networkManager.LocalClientId)
         {
             return;
         }
@@ -347,11 +400,16 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
         string reason = networkManager.DisconnectReason;
         SetActionLabel("Tìm trận");
 
-        ShowResultState(string.IsNullOrWhiteSpace(reason)
+        ShowResultState(
+            string.IsNullOrWhiteSpace(reason)
                 ? "Đã mất kết nối với server."
-                : $"Mất kết nối: {reason}");
+                : $"Mất kết nối: {reason}"
+        );
 
-        if (matchmakingButton != null) { matchmakingButton.interactable = true; }
+        if (matchmakingButton != null)
+        {
+            matchmakingButton.interactable = true;
+        }
     }
 
     #endregion
@@ -366,11 +424,20 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
         SetActive(timerLabel, false);
         SetActive(statusLabel, false);
 
-        if (timerLabel != null) { timerLabel.text = "00:00"; }
+        if (timerLabel != null)
+        {
+            timerLabel.text = "00:00";
+        }
 
-        if (statusLabel != null) { statusLabel.text = string.Empty; }
+        if (statusLabel != null)
+        {
+            statusLabel.text = string.Empty;
+        }
 
-        if (matchmakingButton != null) { matchmakingButton.interactable = true; }
+        if (matchmakingButton != null)
+        {
+            matchmakingButton.interactable = true;
+        }
     }
 
     private void ShowSearchingState(string message = "ĐANG TÌM TRẬN:")
@@ -379,7 +446,10 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
         SetActive(timerLabel, true);
         SetActive(statusLabel, false);
 
-        if (findingMatchLabel != null) { findingMatchLabel.text = message; }
+        if (findingMatchLabel != null)
+        {
+            findingMatchLabel.text = message;
+        }
     }
 
     private void ShowResultState(string message)
@@ -388,17 +458,26 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
         SetActive(timerLabel, false);
         SetActive(statusLabel, true);
 
-        if (statusLabel != null) { statusLabel.text = message; }
+        if (statusLabel != null)
+        {
+            statusLabel.text = message;
+        }
     }
 
     private void SetActionLabel(string message)
     {
-        if (actionLabel != null) { actionLabel.text = message; }
+        if (actionLabel != null)
+        {
+            actionLabel.text = message;
+        }
     }
 
     private static void SetActive(TMP_Text label, bool isActive)
     {
-        if (label != null) { label.gameObject.SetActive(isActive); }
+        if (label != null)
+        {
+            label.gameObject.SetActive(isActive);
+        }
     }
 
     #endregion

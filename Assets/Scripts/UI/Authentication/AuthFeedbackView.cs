@@ -6,17 +6,28 @@ public sealed class AuthFeedbackView : MonoBehaviour
     #region Serialized Fields
 
     [Header("Notification")]
-    [SerializeField] private RectTransform notificationContainer;
-    [SerializeField] private AuthNotificationItem notificationPrefab;
-    [SerializeField] private float displayDuration = 2f;
+    [SerializeField]
+    private RectTransform notificationContainer;
+
+    [SerializeField]
+    private AuthNotificationItem notificationPrefab;
+
+    [SerializeField]
+    private float displayDuration = 2f;
 
     [Header("Background Colors")]
-    [SerializeField] private Color infoColor = new(0.15f, 0.35f, 0.65f, 0.9f);
-    [SerializeField] private Color successColor = new(0.15f, 0.55f, 0.25f, 0.9f);
-    [SerializeField] private Color errorColor = new(0.7f, 0.15f, 0.15f, 0.9f);
+    [SerializeField]
+    private Color infoColor = new(0.15f, 0.35f, 0.65f, 0.9f);
+
+    [SerializeField]
+    private Color successColor = new(0.15f, 0.55f, 0.25f, 0.9f);
+
+    [SerializeField]
+    private Color errorColor = new(0.7f, 0.15f, 0.15f, 0.9f);
 
     [Header("Text")]
-    [SerializeField] private Color textColor = Color.white;
+    [SerializeField]
+    private Color textColor = Color.white;
 
     #endregion
 
@@ -56,7 +67,10 @@ public sealed class AuthFeedbackView : MonoBehaviour
 
     private void Show(string message, Color backgroundColor)
     {
-        if (string.IsNullOrWhiteSpace(message)) { return; }
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return;
+        }
 
         AuthNotificationItem item = GetOrCreateItem();
         activeItems.Add(item);
@@ -71,7 +85,10 @@ public sealed class AuthFeedbackView : MonoBehaviour
     {
         AuthNotificationItem item;
 
-        if (inactiveItems.Count > 0) { item = inactiveItems.Dequeue(); }
+        if (inactiveItems.Count > 0)
+        {
+            item = inactiveItems.Dequeue();
+        }
         else
         {
             item = Instantiate(notificationPrefab, notificationContainer);

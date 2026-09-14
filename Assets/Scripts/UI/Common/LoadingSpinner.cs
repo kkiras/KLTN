@@ -6,8 +6,11 @@ public sealed class LoadingSpinner : MonoBehaviour
 {
     #region Configuration
 
-    [SerializeField] private float rotationSpeed = 240f;
-    [SerializeField] private bool clockwise = true;
+    [SerializeField]
+    private float rotationSpeed = 240f;
+
+    [SerializeField]
+    private bool clockwise = true;
 
     #endregion
 

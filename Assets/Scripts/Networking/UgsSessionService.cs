@@ -36,9 +36,7 @@ public sealed class UgsSessionService
 
     #region Construction
 
-    private UgsSessionService()
-    {
-    }
+    private UgsSessionService() { }
 
     #endregion
 
@@ -64,15 +62,21 @@ public sealed class UgsSessionService
 
     public async Task JoinByCodeAsync(string joinCode)
     {
-        if (string.IsNullOrWhiteSpace(joinCode)) { throw new ArgumentException("Session join code is required.", nameof(joinCode)); }
+        if (string.IsNullOrWhiteSpace(joinCode))
+        {
+            throw new ArgumentException(
+                "Session join code is required.",
+                nameof(joinCode)
+            );
+        }
 
         await LeaveAsync();
 
-        var options = new JoinSessionOptions
-        {
-            Type = SessionType,
-        };
-        session = await MultiplayerService.Instance.JoinSessionByCodeAsync(joinCode.Trim(), options);
+        var options = new JoinSessionOptions { Type = SessionType };
+        session = await MultiplayerService.Instance.JoinSessionByCodeAsync(
+            joinCode.Trim(),
+            options
+        );
         Attach(session);
         PlayerCountChanged?.Invoke(session.PlayerCount);
     }
@@ -80,12 +84,18 @@ public sealed class UgsSessionService
     public async Task LeaveAsync()
     {
         var leavingSession = session;
-        if (leavingSession == null) { return; }
+        if (leavingSession == null)
+        {
+            return;
+        }
 
         Detach(leavingSession);
         session = null;
 
-        if (leavingSession.IsHost) { await leavingSession.AsHost().DeleteAsync(); }
+        if (leavingSession.IsHost)
+        {
+            await leavingSession.AsHost().DeleteAsync();
+        }
         else
         {
             await leavingSession.LeaveAsync();
@@ -125,7 +135,10 @@ public sealed class UgsSessionService
 
     private void OnSessionEnded()
     {
-        if (session != null) { Detach(session); }
+        if (session != null)
+        {
+            Detach(session);
+        }
 
         session = null;
         PlayerCountChanged?.Invoke(0);

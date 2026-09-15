@@ -16,12 +16,18 @@ public sealed class DedicatedServerBootstrap : MonoBehaviour
     #region Configuration
 
     [Header("Server")]
-    [SerializeField] private ushort listenPort = 7777;
-    [SerializeField] private int requiredPlayerCount = 2;
-    [SerializeField] private float emptyServerTimeoutSeconds = 120f;
+    [SerializeField]
+    private ushort listenPort = 7777;
+
+    [SerializeField]
+    private int requiredPlayerCount = 2;
+
+    [SerializeField]
+    private float emptyServerTimeoutSeconds = 120f;
 
     [Header("Editor Testing")]
-    [SerializeField] private bool allowEditorDedicatedServer;
+    [SerializeField]
+    private bool allowEditorDedicatedServer;
 
     #endregion
 
@@ -80,8 +86,8 @@ public sealed class DedicatedServerBootstrap : MonoBehaviour
 #if UNITY_SERVER
         return true;
 #else
-        return allowEditorDedicatedServer ||
-               SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null;
+        return allowEditorDedicatedServer
+            || SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null;
 #endif
     }
 
@@ -125,15 +131,22 @@ public sealed class DedicatedServerBootstrap : MonoBehaviour
         }
 
         connectedClients.Add(clientId);
-        Debug.Log($"Client connected: {clientId}. Players: {connectedClients.Count}/{requiredPlayerCount}");
+        Debug.Log(
+            $"Client connected: {clientId}. Players: {connectedClients.Count}/{requiredPlayerCount}"
+        );
 
-        if (connectedClients.Count == requiredPlayerCount) { LoadGameScene(); }
+        if (connectedClients.Count == requiredPlayerCount)
+        {
+            LoadGameScene();
+        }
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
         connectedClients.Remove(clientId);
-        Debug.Log($"Client disconnected: {clientId}. Remaining players: {connectedClients.Count}");
+        Debug.Log(
+            $"Client disconnected: {clientId}. Remaining players: {connectedClients.Count}"
+        );
 
         if (gameSceneLoadStarted && connectedClients.Count == 0)
         {
@@ -148,13 +161,17 @@ public sealed class DedicatedServerBootstrap : MonoBehaviour
 
     private void LoadGameScene()
     {
-        if (gameSceneLoadStarted) { return; }
+        if (gameSceneLoadStarted)
+        {
+            return;
+        }
 
         gameSceneLoadStarted = true;
         lifetimeCancellation?.Cancel();
         SceneEventProgressStatus status = networkManager.SceneManager.LoadScene(
             SceneNames.GameScene,
-            LoadSceneMode.Single);
+            LoadSceneMode.Single
+        );
 
         if (status != SceneEventProgressStatus.Started)
         {

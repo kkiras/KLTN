@@ -8,8 +8,11 @@ public sealed class AuthNotificationItem : MonoBehaviour
 {
     #region Serialized Fields
 
-    [SerializeField] private Image backgroundImage;
-    [SerializeField] private TMP_Text messageLabel;
+    [SerializeField]
+    private Image backgroundImage;
+
+    [SerializeField]
+    private TMP_Text messageLabel;
 
     #endregion
 
@@ -27,7 +30,8 @@ public sealed class AuthNotificationItem : MonoBehaviour
         Color backgroundColor,
         Color textColor,
         float duration,
-        Action<AuthNotificationItem> onHidden)
+        Action<AuthNotificationItem> onHidden
+    )
     {
         StopLifetimeCoroutine();
         hiddenCallback = onHidden;
@@ -57,7 +61,10 @@ public sealed class AuthNotificationItem : MonoBehaviour
 
     private void Hide()
     {
-        if (!gameObject.activeSelf) { return; }
+        if (!gameObject.activeSelf)
+        {
+            return;
+        }
 
         Action<AuthNotificationItem> callback = hiddenCallback;
         hiddenCallback = null;
@@ -72,7 +79,10 @@ public sealed class AuthNotificationItem : MonoBehaviour
 
     private void StopLifetimeCoroutine()
     {
-        if (lifetimeCoroutine == null) { return; }
+        if (lifetimeCoroutine == null)
+        {
+            return;
+        }
 
         StopCoroutine(lifetimeCoroutine);
         lifetimeCoroutine = null;

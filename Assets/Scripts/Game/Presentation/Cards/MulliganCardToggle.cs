@@ -1,0 +1,57 @@
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+
+public class MulliganCardToggle : MonoBehaviour, IPointerClickHandler
+{
+    public Image replaceOverlay;
+    public ulong cardInstanceId;
+    public bool isSelected = false;
+
+    private Vector3 originalScale;
+    private GameObject replaceSpinnerOverlay;
+
+    private void Start()
+    {
+        originalScale = transform.localScale;
+        Transform spinnerTransform = transform.Find("VisualRoot/ReplaceSpinnerOverlay");
+        if (spinnerTransform != null)
+        {
+            replaceSpinnerOverlay = spinnerTransform.gameObject;
+            replaceSpinnerOverlay.SetActive(isSelected); 
+        }
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        isSelected = !isSelected;
+
+        if (replaceOverlay != null)
+        {
+            replaceOverlay.gameObject.SetActive(isSelected);
+        }
+
+        if (replaceSpinnerOverlay != null)
+        {
+            replaceSpinnerOverlay.SetActive(isSelected);
+        }
+
+        CanvasGroup canvasGroup = GetComponent<CanvasGroup>();
+        if (canvasGroup == null)
+        {
+            canvasGroup = gameObject.AddComponent<CanvasGroup>();
+        }
+
+        if (isSelected)
+        {
+
+            canvasGroup.alpha = 0.75f;
+            transform.localScale = originalScale * 0.85f;
+        }
+        else
+        {
+            canvasGroup.alpha = 1f;
+            transform.localScale = originalScale;
+        }
+    }
+}

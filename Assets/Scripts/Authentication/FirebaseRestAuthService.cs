@@ -71,7 +71,8 @@ public class FirebaseRestAuthService : IAuthService
                 FirebaseAuthResponse response = JsonUtility.FromJson<FirebaseAuthResponse>(webRequest.downloadHandler.text);
                 SaveUserData(response);
 
-                return new AuthResultData {
+                return new AuthResultData
+                {
                     Success = true,
                     UserId = userId,
                     Email = this.email,
@@ -84,7 +85,8 @@ public class FirebaseRestAuthService : IAuthService
         }
         catch (Exception e)
         {
-            return new AuthResultData {
+            return new AuthResultData
+            {
                 Success = false,
                 ErrorCode = "EXCEPTION",
                 ErrorMessage = e.Message
@@ -118,7 +120,8 @@ public class FirebaseRestAuthService : IAuthService
                 FirebaseAuthResponse response = JsonUtility.FromJson<FirebaseAuthResponse>(webRequest.downloadHandler.text);
                 SaveUserData(response);
 
-                return new AuthResultData {
+                return new AuthResultData
+                {
                     Success = true,
                     UserId = userId,
                     Email = this.email,
@@ -131,7 +134,8 @@ public class FirebaseRestAuthService : IAuthService
         }
         catch (Exception e)
         {
-            return new AuthResultData {
+            return new AuthResultData
+            {
                 Success = false,
                 ErrorCode = "EXCEPTION",
                 ErrorMessage = e.Message
@@ -167,7 +171,8 @@ public class FirebaseRestAuthService : IAuthService
                 FirebaseAuthResponse response = JsonUtility.FromJson<FirebaseAuthResponse>(webRequest.downloadHandler.text);
                 SaveUserData(response);
 
-                return new AuthResultData {
+                return new AuthResultData
+                {
                     Success = true,
                     UserId = userId,
                     Email = this.email,
@@ -180,7 +185,8 @@ public class FirebaseRestAuthService : IAuthService
         }
         catch (Exception e)
         {
-            return new AuthResultData {
+            return new AuthResultData
+            {
                 Success = false,
                 ErrorCode = "EXCEPTION",
                 ErrorMessage = e.Message
@@ -216,7 +222,8 @@ public class FirebaseRestAuthService : IAuthService
                 this.refreshToken = response.refresh_token;
                 this.userId = response.user_id;
 
-                return new AuthResultData {
+                return new AuthResultData
+                {
                     Success = true,
                     UserId = this.userId,
                     IdToken = this.idToken,
@@ -413,19 +420,25 @@ public class FirebaseRestAuthService : IAuthService
 
     #region Request and Response DTOs
 
-    [Serializable] private class FirebaseAuthRequest
+    // JsonUtility populates these DTO fields through reflection.
+#pragma warning disable CS0649
+
+    [Serializable]
+    private class FirebaseAuthRequest
     {
         public string email;
         public string password;
         public bool returnSecureToken;
     }
 
-    [Serializable] private class FirebaseAuthConfigData
+    [Serializable]
+    private class FirebaseAuthConfigData
     {
         public string apiKey;
     }
 
-    [Serializable] private class FirebaseIdpRequest
+    [Serializable]
+    private class FirebaseIdpRequest
     {
         public string postBody;
         public string requestUri;
@@ -444,7 +457,8 @@ public class FirebaseRestAuthService : IAuthService
         public string project_id;
     }
 
-    [Serializable] private class FirebaseAuthResponse
+    [Serializable]
+    private class FirebaseAuthResponse
     {
         public string idToken;
         public string email;
@@ -453,16 +467,20 @@ public class FirebaseRestAuthService : IAuthService
         public string localId;
     }
 
-    [Serializable] private class FirebaseErrorResponse
+    [Serializable]
+    private class FirebaseErrorResponse
     {
         public FirebaseError error;
     }
 
-    [Serializable] private class FirebaseError
+    [Serializable]
+    private class FirebaseError
     {
         public int code;
         public string message;
     }
+
+#pragma warning restore CS0649
 
     #endregion
 }

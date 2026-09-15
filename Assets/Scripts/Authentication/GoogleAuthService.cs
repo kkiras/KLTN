@@ -346,6 +346,9 @@ public class GoogleAuthService : MonoBehaviour
         }
     }
 
+    // JsonUtility populates these DTO fields through reflection.
+#pragma warning disable CS0649
+
     [Serializable]
     private class GoogleIdTokenPayload
     {
@@ -409,6 +412,8 @@ public class GoogleAuthService : MonoBehaviour
         public string clientSecret;
         public string scopes;
     }
+
+#pragma warning restore CS0649
 
     #endregion
 }

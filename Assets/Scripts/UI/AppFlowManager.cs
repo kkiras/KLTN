@@ -42,12 +42,18 @@ public sealed class AppFlowManager : MonoBehaviour
 
     private void Start()
     {
-        if (AuthManager.Instance != null) { AuthManager.Instance.TryAutoLogin(); }
+        if (AuthManager.Instance != null)
+        {
+            AuthManager.Instance.TryAutoLogin();
+        }
     }
 
     private void OnDestroy()
     {
-        if (Instance != this) { return; }
+        if (Instance != this)
+        {
+            return;
+        }
 
         AuthManager.OnLoginSuccess -= LoadMainMenu;
         AuthManager.OnLogoutSuccess -= LoadLogin;
@@ -72,7 +78,10 @@ public sealed class AppFlowManager : MonoBehaviour
     {
         if (!Application.CanStreamedLevelBeLoaded(sceneName))
         {
-            Debug.LogError($"Scene '{sceneName}' is unavailable. " + "Check Build Profiles scene list.");
+            Debug.LogError(
+                $"Scene '{sceneName}' is unavailable. "
+                    + "Check Build Profiles scene list."
+            );
             return;
         }
 

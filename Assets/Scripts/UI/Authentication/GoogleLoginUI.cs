@@ -4,8 +4,11 @@ public sealed class GoogleLoginUI : MonoBehaviour
 {
     #region Serialized Fields
 
-    [SerializeField] private AuthUIManager authUIManager;
-    [SerializeField] private AuthFeedbackView feedbackView;
+    [SerializeField]
+    private AuthUIManager authUIManager;
+
+    [SerializeField]
+    private AuthFeedbackView feedbackView;
 
     #endregion
 
@@ -13,14 +16,20 @@ public sealed class GoogleLoginUI : MonoBehaviour
 
     private void OnEnable()
     {
-        if (GoogleAuthService.Instance == null) { return; }
+        if (GoogleAuthService.Instance == null)
+        {
+            return;
+        }
 
         GoogleAuthService.Instance.OnGoogleLoginFailed += OnGoogleLoginFailed;
     }
 
     private void OnDisable()
     {
-        if (GoogleAuthService.Instance == null) { return; }
+        if (GoogleAuthService.Instance == null)
+        {
+            return;
+        }
 
         GoogleAuthService.Instance.OnGoogleLoginFailed -= OnGoogleLoginFailed;
     }
@@ -31,7 +40,10 @@ public sealed class GoogleLoginUI : MonoBehaviour
 
     public void OnGoogleLoginClicked()
     {
-        if (!authUIManager.TryBeginOperation("Đang chờ đăng nhập Google...")) { return; }
+        if (!authUIManager.TryBeginOperation("Đang chờ đăng nhập Google..."))
+        {
+            return;
+        }
 
         feedbackView?.Clear();
         GoogleAuthService.Instance.StartGoogleLogin();
@@ -48,5 +60,4 @@ public sealed class GoogleLoginUI : MonoBehaviour
     }
 
     #endregion
-
 }

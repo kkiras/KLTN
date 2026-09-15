@@ -26,12 +26,17 @@ public static class PublicIpResolver
 
         if (request.result != UnityWebRequest.Result.Success)
         {
-            throw new InvalidOperationException($"Cannot resolve public IP: {request.error}");
+            throw new InvalidOperationException(
+                $"Cannot resolve public IP: {request.error}"
+            );
         }
 
         string publicIp = request.downloadHandler.text.Trim();
 
-        if (string.IsNullOrWhiteSpace(publicIp)) { throw new InvalidOperationException("Public IP response was empty."); }
+        if (string.IsNullOrWhiteSpace(publicIp))
+        {
+            throw new InvalidOperationException("Public IP response was empty.");
+        }
 
         return publicIp;
     }

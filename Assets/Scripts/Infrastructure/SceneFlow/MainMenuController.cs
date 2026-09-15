@@ -8,14 +8,20 @@ public sealed class MainMenuController : MonoBehaviour
 
     public void OpenFindMatch()
     {
-        if (!EnsureSignedIn()) { return; }
+        if (!EnsureSignedIn())
+        {
+            return;
+        }
 
         SceneManager.LoadScene(SceneNames.FindMatch);
     }
 
     public void OpenHostClientMenu()
     {
-        if (!EnsureSignedIn()) { return; }
+        if (!EnsureSignedIn())
+        {
+            return;
+        }
 
         SceneManager.LoadScene(SceneNames.HostClientMenu);
     }
@@ -31,7 +37,10 @@ public sealed class MainMenuController : MonoBehaviour
 
     private static bool EnsureSignedIn()
     {
-        if (AuthenticationService.Instance.IsSignedIn) { return true; }
+        if (AuthenticationService.Instance.IsSignedIn)
+        {
+            return true;
+        }
 
         Debug.LogError("UGS authentication is required before entering multiplayer.");
         SceneManager.LoadScene(SceneNames.Login);

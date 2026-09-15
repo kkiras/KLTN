@@ -10,9 +10,14 @@ public sealed class ListenSessionController : MonoBehaviour
     #region UI
 
     [Header("UI")]
-    [SerializeField] private TMP_InputField joinCodeInput;
-    [SerializeField] private TMP_InputField joinCodeLabel;
-    [SerializeField] private TMP_Text statusLabel;
+    [SerializeField]
+    private TMP_InputField joinCodeInput;
+
+    [SerializeField]
+    private TMP_InputField joinCodeLabel;
+
+    [SerializeField]
+    private TMP_Text statusLabel;
 
     #endregion
 
@@ -48,7 +53,10 @@ public sealed class ListenSessionController : MonoBehaviour
             SetStatus("Đang tạo phòng...");
             string joinCode = await UgsSessionService.Instance.HostAsync();
 
-            if (joinCodeLabel != null) { joinCodeLabel.text = joinCode; }
+            if (joinCodeLabel != null)
+            {
+                joinCodeLabel.text = joinCode;
+            }
 
             SetStatus("Đã tạo phòng. Đang chờ người chơi thứ hai.");
         }
@@ -88,9 +96,7 @@ public sealed class ListenSessionController : MonoBehaviour
     {
         SetStatus($"Người chơi: {playerCount}/2");
 
-        if (playerCount != 2 ||
-            !UgsSessionService.Instance.IsHost ||
-            loadingGameScene)
+        if (playerCount != 2 || !UgsSessionService.Instance.IsHost || loadingGameScene)
         {
             return;
         }
@@ -99,9 +105,7 @@ public sealed class ListenSessionController : MonoBehaviour
         NetworkManager networkManager = NetworkManager.Singleton;
 
         // Wait briefly for the Relay-backed host to start.
-        for (int frame = 0;
-             frame < 120 && !networkManager.IsHost;
-             frame++)
+        for (int frame = 0; frame < 120 && !networkManager.IsHost; frame++)
         {
             await Task.Yield();
         }
@@ -115,7 +119,8 @@ public sealed class ListenSessionController : MonoBehaviour
 
         SceneEventProgressStatus result = networkManager.SceneManager.LoadScene(
             SceneNames.GameScene,
-            LoadSceneMode.Single);
+            LoadSceneMode.Single
+        );
 
         if (result != SceneEventProgressStatus.Started)
         {
@@ -126,7 +131,10 @@ public sealed class ListenSessionController : MonoBehaviour
 
     private void OnHostSessionEnded()
     {
-        if (leaving) { return; }
+        if (leaving)
+        {
+            return;
+        }
 
         SetStatus("Host đã đóng phòng.");
         _ = ReturnToMainMenuAsync();
@@ -138,7 +146,10 @@ public sealed class ListenSessionController : MonoBehaviour
 
     private async Task LeaveAndReturnAsync()
     {
-        if (leaving) { return; }
+        if (leaving)
+        {
+            return;
+        }
 
         leaving = true;
 
@@ -158,7 +169,10 @@ public sealed class ListenSessionController : MonoBehaviour
     {
         NetworkManager networkManager = NetworkManager.Singleton;
 
-        if (networkManager != null && networkManager.IsListening) { networkManager.Shutdown(); }
+        if (networkManager != null && networkManager.IsListening)
+        {
+            networkManager.Shutdown();
+        }
 
         SceneManager.LoadScene(SceneNames.MainMenu);
         return Task.CompletedTask;
@@ -170,7 +184,10 @@ public sealed class ListenSessionController : MonoBehaviour
 
     private void SetStatus(string message)
     {
-        if (statusLabel != null) { statusLabel.text = message; }
+        if (statusLabel != null)
+        {
+            statusLabel.text = message;
+        }
     }
 
     #endregion

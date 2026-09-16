@@ -173,9 +173,10 @@ public class MulliganPresenter : MonoBehaviour
         {
             MulliganCardToggle toggle = child.GetComponent<MulliganCardToggle>();
 
-            if (toggle != null && toggle.isSelected)
+            if (toggle != null)
             {
-                selectedToReplace.Add(toggle.cardInstanceId);
+                if (toggle.isSelected) { selectedToReplace.Add(toggle.cardInstanceId); }
+                Destroy(toggle); 
             }
         }
 

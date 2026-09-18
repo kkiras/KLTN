@@ -207,6 +207,17 @@ namespace KLTN.Game.Networking
             return true;
         }
 
+        public bool RequestSurrender()
+        {
+            if (!IsSpawned || !IsClient)
+            {
+                return false;
+            }
+
+            SubmitSurrenderRpc(nextLocalCommandId++);
+            return true;
+        }
+
         public bool RequestMulligan(ulong[] cardIdsToReplace)
         {
             if (!IsSpawned || !IsClient)

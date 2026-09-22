@@ -136,6 +136,21 @@ namespace KLTN.Game.Presentation
                 return false;
             }
 
+            if (
+                isBlockDraft
+                && !CanStageBlocker(
+                    snapshot,
+                    card.Visual.InstanceId,
+                    slotIndex,
+                    out string reason
+                )
+            )
+            {
+                SetLocalStatus(reason);
+
+                return false;
+            }
+
             ClearPendingBoardStatPreviews();
 
             int sourceSlot = FindPendingBoardSlot(card);

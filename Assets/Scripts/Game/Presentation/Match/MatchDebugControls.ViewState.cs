@@ -275,6 +275,101 @@ namespace KLTN.Game.Presentation
             return false;
         }
 
+        /// <summary>
+        /// Mirrors the visible CannotBlock and Fearsome checks before a blocker is
+        /// staged. The server repeats these checks when the declaration is committed.
+        /// </summary>
+        private static bool CanStageBlocker(
+            MatchSnapshotDto snapshot,
+            string blockerInstanceId,
+            int slotIndex,
+            out string rejectionReason
+        )
+        {
+            rejectionReason = string.Empty;
+
+            CardViewDto blocker = FindCard(snapshot?.self?.reserve, blockerInstanceId);
+
+            if (blocker == null)
+            {
+                rejectionReason = "Lá bài không còn trong Reserve.";
+
+                return false;
+            }
+
+            UnitKeyword blockerKeywords = (UnitKeyword)blocker.keywords;
+
+            if ((blockerKeywords & UnitKeyword.CannotBlock) != 0)
+            {
+                rejectionReason = $"{blocker.displayName} có Không thể chặn.";
+
+                return false;
+            }
+
+            CardViewDto attacker = FindBoardCard(snapshot?.opponent?.board, slotIndex);
+
+            if (attacker == null)
+            {
+                rejectionReason = $"Slot {slotIndex + 1} không có attacker.";
+
+                return false;
+            }
+
+            bool attackerIsFearsome =
+                ((UnitKeyword)attacker.keywords & UnitKeyword.Fearsome) != 0;
+
+            if (
+                attackerIsFearsome
+                && blocker.damage < MatchRulesEngine.FearsomeMinimumBlockerDamage
+            )
+            {
+                rejectionReason =
+                    $"{blocker.displayName} cần ít nhất "
+                    + $"{MatchRulesEngine.FearsomeMinimumBlockerDamage} Power "
+                    + $"để chặn {attacker.displayName} có Đáng sợ.";
+
+                return false;
+            }
+
+            return true;
+        }
+
+        private static CardViewDto FindCard(CardViewDto[] cards, string instanceId)
+        {
+            if (cards == null || string.IsNullOrEmpty(instanceId))
+            {
+                return null;
+            }
+
+            foreach (CardViewDto card in cards)
+            {
+                if (card != null && card.instanceId == instanceId)
+                {
+                    return card;
+                }
+            }
+
+            return null;
+        }
+
+        private static CardViewDto FindBoardCard(CardViewDto[] cards, int slotIndex)
+        {
+            if (cards == null)
+            {
+                return null;
+            }
+
+            foreach (CardViewDto card in cards)
+            {
+                if (card != null && card.boardSlotIndex == slotIndex)
+                {
+                    return card;
+                }
+            }
+
+            return null;
+        }
+
         private string[] BuildBoardCardIdsBySlot()
         {
             var result = new string[MatchState.BoardSlotCount];

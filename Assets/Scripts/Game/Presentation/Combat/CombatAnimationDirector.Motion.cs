@@ -8,6 +8,11 @@ namespace KLTN.Game.Presentation
 {
     public sealed partial class CombatAnimationDirector : MonoBehaviour
     {
+        [Header("Match End UI")]
+        [SerializeField] private MatchResultPresenter matchResultPresenter;
+        private bool hasMatchEnded = false;
+        private bool isVictoryResult = false;
+
         #region Round Animation
 
         private IEnumerator AnimateResolution(MatchUpdateDto update)
@@ -18,6 +23,8 @@ namespace KLTN.Game.Presentation
 
                 yield break;
             }
+
+            hasMatchEnded = false;
 
             RoundResolutionDto resolution = update.resolution;
             int viewerSeat = update.snapshot.viewerSeat;
@@ -56,6 +63,11 @@ namespace KLTN.Game.Presentation
 
             activeDeathFeedbacks.Clear();
             pendingDeathsById.Clear();
+
+            if (hasMatchEnded && matchResultPresenter != null)
+            {
+                matchResultPresenter.ShowResult(isVictoryResult);
+            }
         }
 
         private IEnumerator AnimateRoundTransition(MatchUpdateDto update)
@@ -291,6 +303,12 @@ namespace KLTN.Game.Presentation
             }
 
             yield return WaitUnscaled(impactHoldDuration);
+
+            if (healthAfter <= 0)
+            {
+                hasMatchEnded = true;
+                isVictoryResult = !targetIsSelf; // Địch chết -> Mình thắng
+            }
 
             yield return ReturnCard(attackerAnimator);
         }

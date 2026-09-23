@@ -183,6 +183,52 @@ namespace KLTN.Game.Domain.Tests
         }
 
         [Test]
+        public void ReviveStrongestDeadAlly_ConsidersPreviousRoundDeaths()
+        {
+            MatchState state = CreateState();
+
+            CardDefinition sourceDefinition = Unit("linh_mieu");
+
+            CardDefinition oldStrongDefinition = Unit(
+                "ma_tranh",
+                health: 6,
+                damage: 8
+            );
+
+            CardDefinition currentWeakDefinition = Unit(
+                "current_weak",
+                health: 2,
+                damage: 2
+            );
+
+            var definitions = Definitions(
+                sourceDefinition,
+                oldStrongDefinition,
+                currentWeakDefinition
+            );
+
+            CardInstance source = AddReserveCard(state.Host, 1, sourceDefinition);
+
+            CardInstance oldStrong = AddDeadCard(state, oldStrongDefinition, 2);
+
+            state.RoundHistory.AdvanceToRound(2);
+            state.RoundNumber = 2;
+
+            CardInstance currentWeak = AddDeadCard(state, currentWeakDefinition, 3);
+
+            Execute(
+                state,
+                definitions,
+                source,
+                new EffectDefinition(EffectKind.Revive, EffectTarget.StrongestDeadAlly)
+            );
+
+            CollectionAssert.Contains(state.Host.Reserve, oldStrong);
+            CollectionAssert.Contains(state.Host.Graveyard, currentWeak);
+            Assert.AreEqual(CardZone.Reserve, oldStrong.Zone);
+        }
+
+        [Test]
         public void CopyRandomDeadAlly_CreatesNewHandInstance()
         {
             MatchState state = CreateState();

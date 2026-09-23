@@ -82,6 +82,35 @@ namespace KLTN.Game.Domain
         #endregion
     }
 
+    internal static class ReviveStatCalculator
+    {
+        /// <summary>
+        /// Reapplies stat growth derived from the card's complete death history after a
+        /// revive reset it to base stats. Calling this once per successful revive keeps
+        /// normal effects and RoundStart passive revives consistent.
+        /// </summary>
+        public static void ApplyDeathScaling(
+            MatchState state,
+            CardInstance card,
+            CardDefinition definition
+        )
+        {
+            if (state == null || card == null || definition == null)
+            {
+                return;
+            }
+
+            int bonus =
+                state.RoundHistory.CountDeathsThisGame(card.InstanceId)
+                * definition.PassiveRules.PowerAndHealthPerDeath;
+
+            if (bonus > 0)
+            {
+                card.ApplyBuff(definition, bonus, bonus, EffectDuration.Permanent);
+            }
+        }
+    }
+
     /// <summary>
     /// Handles passive rules that need round history or zone coordination but do not map
     /// cleanly to a single immediate effect operation.
@@ -192,12 +221,7 @@ namespace KLTN.Game.Domain
                         continue;
                     }
 
-                    if (!player.HasActiveRosterSpace)
-                    {
-                        return new GameEventBatch(events);
-                    }
-
-                    bool revived = player.TryReviveCardToBoard(
+                    bool revived = player.TryReviveCardToBoardForTriggeredAttack(
                         candidate,
                         definition,
                         slotIndex
@@ -207,6 +231,12 @@ namespace KLTN.Game.Domain
                     {
                         continue;
                     }
+
+                    ReviveStatCalculator.ApplyDeathScaling(
+                        state,
+                        candidate,
+                        definition
+                    );
 
                     attackersBySlot[slotIndex] = candidate;
 
@@ -277,14 +307,7 @@ namespace KLTN.Game.Domain
                     continue;
                 }
 
-                int deathCount = state.RoundHistory.CountDeathsThisGame(card.InstanceId);
-
-                int bonus = deathCount * rules.PowerAndHealthPerDeath;
-
-                if (bonus > 0)
-                {
-                    card.ApplyBuff(definition, bonus, bonus, EffectDuration.Permanent);
-                }
+                ReviveStatCalculator.ApplyDeathScaling(state, card, definition);
 
                 events.Add(
                     GameEvent.FromCard(

@@ -182,6 +182,8 @@ namespace KLTN.Game.Domain
                     continue;
                 }
 
+                ReviveStatCalculator.ApplyDeathScaling(state, target, definition);
+
                 emittedEvents.Add(
                     GameEvent.FromCard(
                         GameEventType.UnitSummoned,
@@ -239,21 +241,19 @@ namespace KLTN.Game.Domain
             {
                 var records = new List<DeathRecord>();
 
-                foreach (DeathRecord record in state.RoundHistory.CurrentRoundDeaths)
+                foreach (CardInstance card in owner.Graveyard)
                 {
-                    if (record.Owner != owner.Seat)
+                    DeathRecord latestRecord = FindLatestDeathRecord(
+                        state.RoundHistory.AllDeaths,
+                        card.InstanceId
+                    );
+
+                    if (latestRecord == null || latestRecord.Owner != owner.Seat)
                     {
                         continue;
                     }
 
-                    CardInstance card = owner.Graveyard.Find(item =>
-                        item.InstanceId == record.CardInstanceId
-                    );
-
-                    if (card != null)
-                    {
-                        records.Add(record);
-                    }
+                    records.Add(latestRecord);
                 }
 
                 records.Sort(CompareStrongestDeath);
@@ -298,6 +298,27 @@ namespace KLTN.Game.Domain
             }
 
             return result.AsReadOnly();
+        }
+
+        private static DeathRecord FindLatestDeathRecord(
+            IReadOnlyList<DeathRecord> records,
+            ulong instanceId
+        )
+        {
+            DeathRecord latest = null;
+
+            foreach (DeathRecord record in records)
+            {
+                if (
+                    record.CardInstanceId == instanceId
+                    && (latest == null || record.Sequence > latest.Sequence)
+                )
+                {
+                    latest = record;
+                }
+            }
+
+            return latest;
         }
 
         private static int CompareStrongestDeath(DeathRecord left, DeathRecord right)

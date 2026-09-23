@@ -188,6 +188,66 @@ namespace KLTN.Game.Domain.Tests
         }
 
         [Test]
+        public void GraveyardJoin_BypassesRosterCapButStillUsesEmptyBoardSlot()
+        {
+            CardDefinition attackerDefinition = Unit(
+                "ma_lai",
+                keywords: UnitKeyword.Ephemeral
+            );
+
+            CardDefinition fillerDefinition = Unit("filler");
+
+            CardDefinition maDaDefinition = Unit(
+                "ma_da",
+                health: 1,
+                damage: 3,
+                keywords: UnitKeyword.Ephemeral | UnitKeyword.CannotBlock,
+                passiveRules: new UnitPassiveRules(
+                    joinsAttackFromGraveyard: true,
+                    requiresEphemeralAttacker: true
+                )
+            );
+
+            var definitions = Definitions(
+                attackerDefinition,
+                fillerDefinition,
+                maDaDefinition
+            );
+
+            MatchState state = CreateState();
+
+            CardInstance attacker = AddReserveCard(state.Host, 1, attackerDefinition);
+
+            AddReserveCard(state.Host, 2, fillerDefinition);
+            AddReserveCard(state.Host, 3, fillerDefinition);
+            AddReserveCard(state.Host, 4, fillerDefinition);
+
+            Assert.AreEqual(
+                MatchState.MaximumActiveRosterSize,
+                state.Host.ActiveRosterCount
+            );
+
+            Assert.IsTrue(state.Host.TryMoveReserveCardToBoard(attacker, 0));
+
+            CardInstance maDa = RecordDeadCard(state, maDaDefinition, 10);
+
+            var attackers = new CardInstance[] { attacker, null, null };
+
+            var resolver = new UnitPassiveRuleResolver(definitions);
+
+            GameEventBatch events = resolver.JoinAttackFromGraveyard(
+                state,
+                SeatId.Host,
+                attackers
+            );
+
+            Assert.AreSame(maDa, attackers[1]);
+            Assert.AreEqual(CardZone.Board, maDa.Zone);
+            Assert.AreEqual(1, events.Events.Count);
+            Assert.AreEqual(MatchState.MaximumActiveRosterSize + 1, state.Host.ActiveRosterCount);
+        }
+
+        [Test]
         public void GraveyardJoin_RequiresEphemeralAttacker()
         {
             CardDefinition attackerDefinition = Unit("normal");
@@ -277,6 +337,58 @@ namespace KLTN.Game.Domain.Tests
             Assert.AreEqual(GameEventType.UnitDied, events.Events[0].Type);
 
             Assert.AreEqual(GameEventType.UnitSummoned, events.Events[1].Type);
+        }
+
+        [Test]
+        public void KillThenRevive_AppliesDeathScalingImmediately()
+        {
+            CardDefinition sourceDefinition = Unit("thien_linh_cai");
+
+            CardDefinition targetDefinition = Unit(
+                "am_binh",
+                health: 2,
+                damage: 2,
+                passiveRules: new UnitPassiveRules(powerAndHealthPerDeath: 1)
+            );
+
+            var definitions = Definitions(sourceDefinition, targetDefinition);
+
+            MatchState state = CreateState();
+
+            CardInstance source = AddReserveCard(state.Host, 1, sourceDefinition);
+
+            CardInstance target = AddReserveCard(state.Host, 2, targetDefinition);
+
+            var ability = new AbilityDefinition(
+                "kill_then_revive",
+                AbilityTrigger.Play,
+                new[]
+                {
+                    new EffectDefinition(EffectKind.Kill, EffectTarget.PrimarySelection),
+                    new EffectDefinition(
+                        EffectKind.Revive,
+                        EffectTarget.PrimarySelection
+                    ),
+                }
+            );
+
+            var triggered = new TriggeredAbility(
+                source.InstanceId,
+                source.Owner,
+                ability,
+                GameEvent.FromCard(GameEventType.UnitPlayed, state.RoundNumber, source)
+            );
+
+            var selection = new AbilityTargetSelection(new[] { target.InstanceId }, null);
+
+            var executor = new AbilityEffectExecutor(definitions);
+
+            executor.Execute(state, triggered, selection);
+
+            Assert.AreEqual(CardZone.Reserve, target.Zone);
+            Assert.AreEqual(3, target.GetDamage(targetDefinition));
+            Assert.AreEqual(3, target.CurrentHealth);
+            Assert.AreEqual(1, state.RoundHistory.CountDeathsThisGame(target.InstanceId));
         }
 
         private static MatchState CreateState()

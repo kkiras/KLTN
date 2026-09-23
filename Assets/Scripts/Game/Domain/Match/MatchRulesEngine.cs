@@ -14,7 +14,13 @@ namespace KLTN.Game.Domain
 
         private const int MaximumMana = 10;
         private const int DrawIntervalRounds = 2;
-        private const int FearsomeMinimumBlockerDamage = 3;
+
+        /// <summary>
+        /// Minimum current Power required to block a Fearsome attacker. Presentation
+        /// uses the same value for immediate drag validation; the host still validates
+        /// the submitted command authoritatively.
+        /// </summary>
+        public const int FearsomeMinimumBlockerDamage = 3;
 
         #endregion
 

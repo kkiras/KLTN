@@ -140,7 +140,8 @@ namespace KLTN.Game.Editor
                 4,
                 7,
                 UnitKeyword.None,
-                "Summon: hồi sinh đồng minh mạnh nhất " + "đã chết trong vòng này.",
+                "Summon: hồi sinh đồng minh mạnh nhất đang ở Graveyard, "
+                    + "xét trên toàn bộ trận đấu.",
                 Passive(),
                 Ability(
                     "linh_mieu_summon",
@@ -218,12 +219,12 @@ namespace KLTN.Game.Editor
                 8,
                 8,
                 UnitKeyword.Fearsome,
-                "Đáng sợ. Play: nếu một đồng minh đã chết "
+                "Đáng sợ. Summon: nếu một đồng minh đã chết "
                     + "trong vòng này, giết 2 kẻ địch yếu nhất.",
                 Passive(),
                 Ability(
-                    "ma_tranh_play",
-                    AbilityTrigger.Play,
+                    "ma_tranh_summon",
+                    AbilityTrigger.Summon,
                     new[]
                     {
                         Effect(EffectKind.Kill, EffectTarget.WeakestEnemies, count: 2),

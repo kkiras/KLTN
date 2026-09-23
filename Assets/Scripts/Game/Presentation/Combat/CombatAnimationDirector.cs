@@ -51,6 +51,13 @@ namespace KLTN.Game.Presentation
         [SerializeField]
         private CombatVfxPresenter vfxPresenter;
 
+        [Header("Audio")]
+        [SerializeField]
+        private AudioSource sfxAudioSource;
+
+        [SerializeField]
+        private AudioClip attackSfx;
+
         [Header("Damage Feedback")]
         [SerializeField]
         private DamageFeedbackView selfNexusFeedback;
@@ -187,6 +194,16 @@ namespace KLTN.Game.Presentation
             }
 
             processingCoroutine = null;
+        }
+
+        private void PlayAttackSfx()
+        {
+            if (sfxAudioSource == null || attackSfx == null)
+            {
+                return;
+            }
+
+            sfxAudioSource.PlayOneShot(attackSfx);
         }
 
         #endregion

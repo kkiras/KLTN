@@ -58,6 +58,7 @@ namespace KLTN.Game.Networking
         public CardViewDto[] hand;
         public CardViewDto[] reserve;
         public CardViewDto[] board;
+        public CardViewDto[] graveyard;
 
         #endregion
     }

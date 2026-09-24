@@ -27,6 +27,8 @@ namespace KLTN.Game.Presentation
         [SerializeField] private Vector2 previewEndNormalized = new Vector2(0.8f, 0.65f);
 
         private readonly List<RectTransform> selectedTargets = new List<RectTransform>();
+        private readonly List<Rect> protectedCardBounds = new List<Rect>();
+        private readonly Vector3[] cardCorners = new Vector3[4];
         private RectTransform source;
         private RectTransform hoverTarget;
 
@@ -111,14 +113,27 @@ namespace KLTN.Game.Presentation
                 return;
             }
 
+            protectedCardBounds.Clear();
+            AddProtectedCardBounds(source);
+
             for (int i = 0; i < selectedTargets.Count; i++)
             {
-                DrawLink(mesh, start, selectedTargets[i]);
+                AddProtectedCardBounds(selectedTargets[i]);
             }
 
             if (hoverTarget != null && !selectedTargets.Contains(hoverTarget))
             {
-                DrawLink(mesh, start, hoverTarget);
+                AddProtectedCardBounds(hoverTarget);
+            }
+
+            for (int i = 0; i < selectedTargets.Count; i++)
+            {
+                DrawLink(mesh, start, selectedTargets[i], protectedCardBounds);
+            }
+
+            if (hoverTarget != null && !selectedTargets.Contains(hoverTarget))
+            {
+                DrawLink(mesh, start, hoverTarget, protectedCardBounds);
             }
         }
 
@@ -130,17 +145,27 @@ namespace KLTN.Game.Presentation
             }
         }
 
-        private void DrawLink(VertexHelper mesh, Vector2 start, RectTransform target)
+        private void DrawLink(
+            VertexHelper mesh,
+            Vector2 start,
+            RectTransform target,
+            IReadOnlyList<Rect> protectedBounds
+        )
         {
             if (target == null || !TryLocalCenter(target, out Vector2 end))
             {
                 return;
             }
 
-            DrawLink(mesh, start, end);
+            DrawLink(mesh, start, end, protectedBounds);
         }
 
-        private void DrawLink(VertexHelper mesh, Vector2 start, Vector2 end)
+        private void DrawLink(
+            VertexHelper mesh,
+            Vector2 start,
+            Vector2 end,
+            IReadOnlyList<Rect> protectedBounds = null
+        )
         {
             Vector2 control = (start + end) * 0.5f
                 + Vector2.up * Mathf.Min(58f, Vector2.Distance(start, end) * 0.14f);
@@ -190,12 +215,48 @@ namespace KLTN.Game.Presentation
                     {
                         Color halo = coreColor;
                         halo.a *= 0.22f;
-                        AddSegment(mesh, first, second, haloWidth, halo);
+                        AddVisibleSegment(
+                            mesh, first, second, haloWidth, halo, protectedBounds, 0
+                        );
                     }
 
-                    AddSegment(mesh, first, second, width, tint);
+                    AddVisibleSegment(
+                        mesh, first, second, width, tint, protectedBounds, 0
+                    );
                 }
             }
+        }
+
+        private void AddProtectedCardBounds(RectTransform card)
+        {
+            if (card == null || card.rect.width <= 0f || card.rect.height <= 0f)
+            {
+                return;
+            }
+
+            card.GetWorldCorners(cardCorners);
+            Camera camera = ProjectionCamera();
+            Vector2 minimum = new Vector2(float.PositiveInfinity, float.PositiveInfinity);
+            Vector2 maximum = new Vector2(float.NegativeInfinity, float.NegativeInfinity);
+
+            for (int i = 0; i < cardCorners.Length; i++)
+            {
+                Vector2 screen = RectTransformUtility.WorldToScreenPoint(camera, cardCorners[i]);
+
+                if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    rectTransform, screen, camera, out Vector2 local
+                ))
+                {
+                    return;
+                }
+
+                minimum = Vector2.Min(minimum, local);
+                maximum = Vector2.Max(maximum, local);
+            }
+
+            protectedCardBounds.Add(Rect.MinMaxRect(
+                minimum.x, minimum.y, maximum.x, maximum.y
+            ));
         }
 
 #if UNITY_EDITOR
@@ -263,10 +324,7 @@ namespace KLTN.Game.Presentation
 
         private bool TryLocalCenter(RectTransform target, out Vector2 local)
         {
-            Canvas root = GetComponentInParent<Canvas>()?.rootCanvas;
-            Camera camera = root != null && root.renderMode != RenderMode.ScreenSpaceOverlay
-                ? root.worldCamera
-                : null;
+            Camera camera = ProjectionCamera();
             Vector3 world = target.TransformPoint(target.rect.center);
             Vector2 screen = RectTransformUtility.WorldToScreenPoint(camera, world);
             return RectTransformUtility.ScreenPointToLocalPointInRectangle(
@@ -277,6 +335,114 @@ namespace KLTN.Game.Presentation
             );
         }
 
+        private Camera ProjectionCamera()
+        {
+            Canvas root = GetComponentInParent<Canvas>()?.rootCanvas;
+            return root != null && root.renderMode != RenderMode.ScreenSpaceOverlay
+                ? root.worldCamera
+                : null;
+        }
+
+        /// <summary>
+        /// Removes only the portions covered by the source and chosen/hovered cards.
+        /// Other cards stay beneath the beam without changing their Canvas or raycasts.
+        /// </summary>
+        private static void AddVisibleSegment(
+            VertexHelper mesh,
+            Vector2 start,
+            Vector2 end,
+            float width,
+            Color color,
+            IReadOnlyList<Rect> protectedBounds,
+            int nextBound
+        )
+        {
+            if (protectedBounds == null || nextBound >= protectedBounds.Count)
+            {
+                AddSegment(mesh, start, end, width, color);
+                return;
+            }
+
+            if (!TryClipSegmentToRect(
+                start, end, protectedBounds[nextBound], width * 0.5f + 1f,
+                out float entry, out float exit
+            ))
+            {
+                AddVisibleSegment(
+                    mesh, start, end, width, color, protectedBounds, nextBound + 1
+                );
+                return;
+            }
+
+            Vector2 delta = end - start;
+
+            if (entry > 0.0001f)
+            {
+                AddVisibleSegment(
+                    mesh, start, start + delta * entry, width, color,
+                    protectedBounds, nextBound + 1
+                );
+            }
+
+            if (exit < 0.9999f)
+            {
+                AddVisibleSegment(
+                    mesh, start + delta * exit, end, width, color,
+                    protectedBounds, nextBound + 1
+                );
+            }
+        }
+
+        private static bool TryClipSegmentToRect(
+            Vector2 start,
+            Vector2 end,
+            Rect bounds,
+            float padding,
+            out float entry,
+            out float exit
+        )
+        {
+            entry = 0f;
+            exit = 1f;
+            Vector2 delta = end - start;
+
+            return ClipEdge(-delta.x, start.x - bounds.xMin + padding, ref entry, ref exit)
+                && ClipEdge(delta.x, bounds.xMax + padding - start.x, ref entry, ref exit)
+                && ClipEdge(-delta.y, start.y - bounds.yMin + padding, ref entry, ref exit)
+                && ClipEdge(delta.y, bounds.yMax + padding - start.y, ref entry, ref exit);
+        }
+
+        private static bool ClipEdge(float direction, float distance, ref float entry, ref float exit)
+        {
+            if (Mathf.Abs(direction) < 0.000001f)
+            {
+                return distance >= 0f;
+            }
+
+            float crossing = distance / direction;
+
+            if (direction < 0f)
+            {
+                if (crossing > exit)
+                {
+                    return false;
+                }
+
+                entry = Mathf.Max(entry, crossing);
+            }
+            else
+            {
+                if (crossing < entry)
+                {
+                    return false;
+                }
+
+                exit = Mathf.Min(exit, crossing);
+            }
+
+            return true;
+        }
+
         private static void AddSegment(
             VertexHelper mesh,
             Vector2 start,
@@ -285,6 +451,11 @@ namespace KLTN.Game.Presentation
             Color color
         )
         {
+            if ((end - start).sqrMagnitude < 0.000001f)
+            {
+                return;
+            }
+
             Vector2 direction = (end - start).normalized;
             Vector2 normal = new Vector2(-direction.y, direction.x) * (width * 0.5f);
             int index = mesh.currentVertCount;

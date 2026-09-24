@@ -493,15 +493,17 @@ namespace KLTN.Game.Presentation
                 return;
             }
 
-            RectTransform sourceRect = boardPresenter.AbilitySelectionSourceRoot;
+            RectTransform sourceRect = null;
 
-            if (sourceRect == null && boardPresenter.TryGetFaceUpVisual(
+            if (boardPresenter.TryGetFaceUpVisual(
                 pendingSelection.sourceCardInstanceId,
                 out NetworkCardVisual source
             ))
             {
                 sourceRect = source.CardRect;
             }
+
+            sourceRect ??= boardPresenter.AbilitySelectionSourceRoot;
 
             if (sourceRect == null)
             {

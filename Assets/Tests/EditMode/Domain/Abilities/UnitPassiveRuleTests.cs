@@ -137,6 +137,16 @@ namespace KLTN.Game.Domain.Tests
             Assert.AreEqual(1, events.Events.Count);
 
             Assert.AreEqual(GameEventType.UnitSummoned, events.Events[0].Type);
+
+            AbilityResolution visual = state.TakeAbilityResolution();
+            Assert.IsNotNull(visual);
+            Assert.AreEqual(1, visual.Events.Count);
+            Assert.AreEqual(EffectKind.Revive, visual.Events[0].Kind);
+            Assert.IsTrue(visual.Events[0].IsRoundStartPassive);
+            Assert.AreEqual(CardZone.Graveyard, visual.Events[0].TargetBefore.Zone);
+            Assert.AreEqual(CardZone.Reserve, visual.Events[0].TargetAfter.Zone);
+            Assert.AreEqual(3, visual.Events[0].TargetAfter.Damage);
+            Assert.IsNull(state.TakeAbilityResolution());
         }
 
         [Test]
@@ -337,6 +347,14 @@ namespace KLTN.Game.Domain.Tests
             Assert.AreEqual(GameEventType.UnitDied, events.Events[0].Type);
 
             Assert.AreEqual(GameEventType.UnitSummoned, events.Events[1].Type);
+
+            AbilityResolution visual = state.TakeAbilityResolution();
+            Assert.AreEqual(2, visual.Events.Count);
+            Assert.AreEqual(EffectKind.Kill, visual.Events[0].Kind);
+            Assert.AreEqual(EffectKind.Revive, visual.Events[1].Kind);
+            Assert.AreEqual(target.InstanceId, visual.Events[0].TargetBefore.InstanceId);
+            Assert.AreEqual(target.InstanceId, visual.Events[1].TargetAfter.InstanceId);
+            Assert.Less(visual.Events[0].Sequence, visual.Events[1].Sequence);
         }
 
         [Test]
@@ -389,6 +407,10 @@ namespace KLTN.Game.Domain.Tests
             Assert.AreEqual(3, target.GetDamage(targetDefinition));
             Assert.AreEqual(3, target.CurrentHealth);
             Assert.AreEqual(1, state.RoundHistory.CountDeathsThisGame(target.InstanceId));
+
+            AbilityResolution visual = state.TakeAbilityResolution();
+            Assert.AreEqual(3, visual.Events[1].TargetAfter.Damage);
+            Assert.AreEqual(3, visual.Events[1].TargetAfter.MaximumHealth);
         }
 
         private static MatchState CreateState()

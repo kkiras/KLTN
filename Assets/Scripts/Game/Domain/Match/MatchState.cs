@@ -44,7 +44,42 @@ namespace KLTN.Game.Domain
         public bool IsFinished => Outcome != MatchOutcome.Running;
         private ulong nextAbilitySelectionRequestId = 1;
         private ulong nextGeneratedCardInstanceId = 1;
+        private long nextAbilityResolutionSequence = 1;
+        private readonly List<AbilityResolutionEvent> pendingAbilityResolutionEvents =
+            new List<AbilityResolutionEvent>();
         public PendingAbilitySelection PendingSelection { get; private set; }
+
+        #endregion
+
+        #region Ability Resolution Publication
+
+        public long NextAbilityResolutionSequence()
+        {
+            return nextAbilityResolutionSequence++;
+        }
+
+        public void RecordAbilityResolution(AbilityResolutionEvent resolutionEvent)
+        {
+            if (resolutionEvent == null)
+            {
+                throw new ArgumentNullException(nameof(resolutionEvent));
+            }
+
+            pendingAbilityResolutionEvents.Add(resolutionEvent);
+        }
+
+        /// <summary>Returns and clears the effects applied since the last publication.</summary>
+        public AbilityResolution TakeAbilityResolution()
+        {
+            if (pendingAbilityResolutionEvents.Count == 0)
+            {
+                return null;
+            }
+
+            var result = new AbilityResolution(pendingAbilityResolutionEvents.ToArray());
+            pendingAbilityResolutionEvents.Clear();
+            return result;
+        }
 
         #endregion
 

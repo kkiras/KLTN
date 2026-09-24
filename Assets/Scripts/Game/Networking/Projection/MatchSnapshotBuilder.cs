@@ -190,11 +190,23 @@ namespace KLTN.Game.Networking
                     );
 
                 var validTargetIds = new string[validTargets.Count];
+                var lethalTargetIds = new List<string>();
 
                 for (int targetIndex = 0; targetIndex < validTargets.Count; targetIndex++)
                 {
                     validTargetIds[targetIndex] = validTargets[targetIndex]
                         .InstanceId.ToString();
+
+                    if (
+                        WouldSelectedTargetDie(
+                            pending.Ability,
+                            requirement.Slot,
+                            validTargets[targetIndex]
+                        )
+                    )
+                    {
+                        lethalTargetIds.Add(validTargetIds[targetIndex]);
+                    }
                 }
 
                 requirements[i] = new AbilityTargetRequirementDto
@@ -210,6 +222,7 @@ namespace KLTN.Game.Networking
                     excludeSource = requirement.ExcludeSource,
 
                     validTargetIds = validTargetIds,
+                    lethalTargetIds = lethalTargetIds.ToArray(),
                 };
             }
 
@@ -227,6 +240,39 @@ namespace KLTN.Game.Networking
 
                 requirements = requirements,
             };
+        }
+
+        private static bool WouldSelectedTargetDie(
+            AbilityDefinition ability,
+            AbilityTargetSlot slot,
+            CardInstance target
+        )
+        {
+            EffectTarget selectedTarget = slot == AbilityTargetSlot.Primary
+                ? EffectTarget.PrimarySelection
+                : EffectTarget.SecondarySelection;
+
+            int totalDamage = 0;
+
+            foreach (EffectDefinition effect in ability.Effects)
+            {
+                if (effect.Target != selectedTarget)
+                {
+                    continue;
+                }
+
+                if (effect.Kind == EffectKind.Kill || effect.Kind == EffectKind.Sacrifice)
+                {
+                    return true;
+                }
+
+                if (effect.Kind == EffectKind.Damage)
+                {
+                    totalDamage += Math.Max(0, effect.Amount);
+                }
+            }
+
+            return totalDamage > 0 && totalDamage >= target.CurrentHealth;
         }
 
         private PlayerViewDto BuildPlayer(

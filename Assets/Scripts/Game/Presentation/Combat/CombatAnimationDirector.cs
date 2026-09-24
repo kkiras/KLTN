@@ -136,6 +136,8 @@ namespace KLTN.Game.Presentation
 
             StopAllCoroutines();
 
+            CleanupAbilityPresentation();
+
             activeDamageFeedbackCount = 0;
             RestorePreparedCards();
             ResetFeedbackViews();
@@ -178,19 +180,48 @@ namespace KLTN.Game.Presentation
         {
             while (inbox.TryDequeue(out currentUpdate))
             {
-                if (HasCombatResolution(currentUpdate))
+                bool hasAbilities = currentUpdate.hasAbilityResolution
+                    && currentUpdate.abilityResolution?.events != null
+                    && currentUpdate.abilityResolution.events.Length > 0;
+
+                if (hasAbilities)
                 {
-                    yield return AnimateResolution(currentUpdate);
+                    // Projection is applied only after all effects finish. Hide the
+                    // selection beam now, before the target's death animation starts.
+                    boardPresenter?.GetComponent<AbilityTargetSelectionController>()
+                        ?.SuspendLinksForResolution();
+                    SetAbilityInputBlocked(true);
                 }
 
-                if (HasRoundTransition(currentUpdate))
+                try
                 {
-                    yield return AnimateRoundTransition(currentUpdate);
+                    if (HasCombatResolution(currentUpdate))
+                    {
+                        yield return AnimateResolution(currentUpdate);
+                    }
+
+                    if (HasRoundTransition(currentUpdate))
+                    {
+                        yield return AnimateRoundTransition(currentUpdate);
+                    }
+
+                    if (hasAbilities)
+                    {
+                        yield return AnimateAbilityResolution(currentUpdate);
+                    }
+
+                    projection.Apply(currentUpdate.snapshot);
                 }
+                finally
+                {
+                    if (hasAbilities)
+                    {
+                        SetAbilityInputBlocked(false);
+                        ClearAbilityGraphics();
+                    }
 
-                projection.Apply(currentUpdate.snapshot);
-
-                currentUpdate = null;
+                    currentUpdate = null;
+                }
             }
 
             processingCoroutine = null;

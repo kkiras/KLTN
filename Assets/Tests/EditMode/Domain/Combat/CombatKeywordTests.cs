@@ -885,6 +885,64 @@ namespace KLTN.Game.Domain.Tests
             Assert.AreEqual(3, state.RoundHistory.CurrentRoundDeaths[0].DamageAtDeath);
         }
 
+        [Test]
+        public void AdjacentBlockerSupport_BuffsRightBlockerBeforeCombat_ThenExpires()
+        {
+            AbilityDefinition supportAbility = Ability(
+                "quy_cau_support",
+                AbilityTrigger.Support,
+                new EffectDefinition(
+                    EffectKind.Buff,
+                    EffectTarget.TriggerSubject,
+                    amount: 2,
+                    secondaryAmount: 0,
+                    duration: EffectDuration.ThisRound
+                )
+            );
+
+            CardDefinition attackerDefinition = Unit("attacker", 7, 1, UnitKeyword.None);
+            CardDefinition supporterDefinition = Unit(
+                "QuyCau",
+                5,
+                3,
+                UnitKeyword.None,
+                supportAbility
+            );
+            CardDefinition supportedDefinition = Unit("ally", 5, 1, UnitKeyword.None);
+
+            MatchState state = CreateReadyState();
+            CardInstance firstAttacker = AddReserve(state.Host, 1, attackerDefinition);
+            CardInstance secondAttacker = AddReserve(state.Host, 2, attackerDefinition);
+            CardInstance supporter = AddReserve(state.Guest, 3, supporterDefinition);
+            CardInstance supported = AddReserve(state.Guest, 4, supportedDefinition);
+            MatchRulesEngine engine = Engine(
+                attackerDefinition,
+                supporterDefinition,
+                supportedDefinition
+            );
+
+            Assert.IsTrue(engine.TryDeclareAttack(
+                state,
+                SeatId.Host,
+                new[] { firstAttacker.InstanceId, secondAttacker.InstanceId, 0UL }
+            ).Accepted);
+
+            CommandResult combat = engine.TryDeclareBlock(
+                state,
+                SeatId.Guest,
+                new[] { supporter.InstanceId, supported.InstanceId, 0UL }
+            );
+
+            Assert.IsTrue(combat.Accepted);
+            Assert.AreEqual(3, combat.Resolution.Steps[1].GuestCard.DamageBefore);
+            Assert.AreEqual(3, supported.GetDamage(supportedDefinition));
+            Assert.AreEqual(CardZone.Reserve, supported.Zone);
+
+            Assert.IsTrue(engine.TryPass(state, SeatId.Guest).Accepted);
+            Assert.IsTrue(engine.TryPass(state, SeatId.Host).Accepted);
+            Assert.AreEqual(1, supported.GetDamage(supportedDefinition));
+        }
+
         private static MatchState CreateReadyState()
         {
             var state = new MatchState(SeatId.Host);

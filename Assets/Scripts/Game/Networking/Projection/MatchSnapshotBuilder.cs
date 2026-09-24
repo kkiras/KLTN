@@ -258,6 +258,8 @@ namespace KLTN.Game.Networking
                 reserve = ConvertCards(state, player.Reserve),
 
                 board = ConvertCards(state, player.Board),
+
+                graveyard = ConvertCards(state, player.Graveyard),
             };
         }
 
@@ -370,6 +372,7 @@ namespace KLTN.Game.Networking
                 hand = Array.Empty<CardViewDto>(),
                 reserve = Array.Empty<CardViewDto>(),
                 board = Array.Empty<CardViewDto>(),
+                graveyard = Array.Empty<CardViewDto>(),
             };
         }
 

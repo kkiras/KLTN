@@ -671,6 +671,26 @@ namespace KLTN.Game.Presentation
 
         #region Artwork Lookup
 
+        public NetworkCardVisual CreateGraveyardCard(
+        CardViewDto dto,
+        RectTransform parent
+        )
+        {
+            if (dto == null || parent == null || cardPrefab == null)
+            {
+            return null;
+            }
+
+            NetworkCardVisual view = Instantiate(cardPrefab, parent);
+
+            view.BindFaceUp(dto, FindArtwork(dto.definitionId));
+            view.SetPending(false);
+            view.ClearAbilityTargetState();
+            view.SetInteractableVisual(true);
+
+            return view;
+        }
+
         private CardArtworkView FindArtwork(string definitionId)
         {
             if (presentationCatalog == null)

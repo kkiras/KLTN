@@ -151,6 +151,27 @@ namespace KLTN.Game.Networking
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void SubmitSurrenderRpc(
+            ulong commandId,
+            RpcParams rpcParams = default
+        )
+        {
+            ulong senderClientId = rpcParams.Receive.SenderClientId;
+
+            if (!TryBeginCommand(senderClientId, commandId, out SeatId actor))
+            {
+                return;
+            }
+
+            CommandResult result = rulesEngine.TrySurrender(
+                matchState,
+                actor
+            );
+
+            FinishCommand(senderClientId, result);
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         private void SubmitMulliganRpc(
             ulong commandId,
             ulong[] cardIdsToReplace,
@@ -228,6 +249,15 @@ namespace KLTN.Game.Networking
             {
                 RejectCommand(senderClientId, result.RejectionReason);
                 return;
+            }
+
+            if (matchState != null && result.Resolution != null)
+            {
+                Debug.Log(
+                    $"[SERVER GRAVEYARD] " +
+                    $"Host={matchState.Host.Graveyard.Count}, " +
+                    $"Guest={matchState.Guest.Graveyard.Count}"
+                );
             }
 
             BroadcastUpdate(result.Resolution, result.RoundTransition);

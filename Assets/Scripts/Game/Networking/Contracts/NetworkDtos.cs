@@ -72,6 +72,7 @@ namespace KLTN.Game.Networking
         public bool excludeSource;
 
         public string[] validTargetIds;
+        public string[] lethalTargetIds;
     }
 
     [Serializable]
@@ -190,6 +191,35 @@ namespace KLTN.Game.Networking
     }
 
     [Serializable]
+    public sealed class AbilityResolutionEventDto
+    {
+        public long sequence;
+        public string abilityId;
+        public int effectKind;
+        public bool isRoundStartPassive;
+        public CardViewDto source;
+        public CardViewDto targetBefore;
+        public CardViewDto targetAfter;
+        public int sourceOwner = -1;
+        public int sourceZone = -1;
+        public int targetOwner = -1;
+        public int targetZoneBefore = -1;
+        public int targetZoneAfter = -1;
+        public bool hasNexusTarget;
+        public int nexusOwner = -1;
+        public int nexusHealthBefore;
+        public int nexusHealthAfter;
+        public int reviveDamageBonus;
+        public int reviveHealthBonus;
+    }
+
+    [Serializable]
+    public sealed class AbilityResolutionDto
+    {
+        public AbilityResolutionEventDto[] events;
+    }
+
+    [Serializable]
     public sealed class MatchUpdateDto
     {
         #region Authoritative Update
@@ -201,6 +231,9 @@ namespace KLTN.Game.Networking
 
         public bool hasRoundTransition;
         public RoundTransitionDto roundTransition;
+
+        public bool hasAbilityResolution;
+        public AbilityResolutionDto abilityResolution;
 
         #endregion
     }

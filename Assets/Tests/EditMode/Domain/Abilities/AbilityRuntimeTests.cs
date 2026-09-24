@@ -226,6 +226,12 @@ namespace KLTN.Game.Domain.Tests
             CollectionAssert.Contains(state.Guest.Graveyard, weak);
             CollectionAssert.Contains(state.Guest.Graveyard, medium);
             CollectionAssert.Contains(state.Guest.Reserve, strong);
+
+            AbilityResolution visual = state.TakeAbilityResolution();
+            Assert.AreEqual(2, visual.Events.Count);
+            Assert.AreEqual(EffectKind.Kill, visual.Events[0].Kind);
+            Assert.AreEqual(weak.InstanceId, visual.Events[0].TargetBefore.InstanceId);
+            Assert.AreEqual(medium.InstanceId, visual.Events[1].TargetBefore.InstanceId);
         }
 
         [Test]
@@ -441,6 +447,13 @@ namespace KLTN.Game.Domain.Tests
             Assert.AreEqual(1, state.Guest.DrawHand.Count);
 
             Assert.AreEqual(19, state.Host.NexusHealth);
+
+            AbilityResolution visual = state.TakeAbilityResolution();
+            Assert.AreEqual(1, visual.Events.Count);
+            Assert.AreEqual(EffectKind.Damage, visual.Events[0].Kind);
+            Assert.AreEqual(SeatId.Host, visual.Events[0].NexusOwner);
+            Assert.AreEqual(20, visual.Events[0].NexusHealthBefore);
+            Assert.AreEqual(19, visual.Events[0].NexusHealthAfter);
         }
 
         [Test]

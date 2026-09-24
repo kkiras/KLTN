@@ -28,6 +28,10 @@ namespace KLTN.Game.Presentation
         [SerializeField]
         private Button cancelButton;
 
+        [Header("Target Link")]
+        [SerializeField]
+        private GameObject targetLinkPrefab;
+
         [Header("Target Colors")]
         [SerializeField]
         private Color validTargetColor = new Color(1f, 0.75f, 0.1f, 0.25f);
@@ -37,6 +41,10 @@ namespace KLTN.Game.Presentation
 
         [SerializeField]
         private Color secondarySelectedColor = new Color(1f, 0.2f, 0.55f, 0.42f);
+
+        [Header("Target Emphasis")]
+        [Min(0f)] [SerializeField] private float targetScaleBoost = 0.2f;
+        [Min(0f)] [SerializeField] private float targetLift = 20f;
 
         #endregion
 
@@ -50,12 +58,21 @@ namespace KLTN.Game.Presentation
 
         private readonly List<string> secondaryTargets = new List<string>();
 
+        private readonly Dictionary<string, CardDeathFeedback> previewCracks =
+            new Dictionary<string, CardDeathFeedback>();
+
+        private AbilityTargetLinkGraphic targetLinks;
+        private GameObject targetLinkInstance;
+        private string hoveredTargetId;
+        private bool linksSuspendedForResolution;
+
         #endregion
 
         #region Unity Lifecycle
 
         private void OnEnable()
         {
+            CreateTargetLinks();
             projection = MatchProjectionRegistry.Current;
 
             if (projection != null)
@@ -100,6 +117,13 @@ namespace KLTN.Game.Presentation
             }
 
             ClearLocalState();
+
+            if (targetLinkInstance != null)
+            {
+                Destroy(targetLinkInstance);
+                targetLinks = null;
+                targetLinkInstance = null;
+            }
         }
 
         #endregion
@@ -118,6 +142,7 @@ namespace KLTN.Game.Presentation
 
         private void OnFaceUpViewsRendered()
         {
+            previewCracks.Clear();
             RefreshTargetVisuals();
         }
 
@@ -147,6 +172,9 @@ namespace KLTN.Game.Presentation
             {
                 primaryTargets.Clear();
                 secondaryTargets.Clear();
+                hoveredTargetId = null;
+                linksSuspendedForResolution = false;
+                targetLinks?.SetLinks(null, null, null);
             }
 
             SanitizeSelections();
@@ -159,6 +187,10 @@ namespace KLTN.Game.Presentation
 
             primaryTargets.Clear();
             secondaryTargets.Clear();
+            hoveredTargetId = null;
+            linksSuspendedForResolution = false;
+            ClearCrackPreviews();
+            targetLinks?.SetLinks(null, null, null);
 
             if (boardPresenter != null)
             {
@@ -213,6 +245,23 @@ namespace KLTN.Game.Presentation
             RefreshPresentation();
         }
 
+        private void HandleTargetEntered(string instanceId)
+        {
+            hoveredTargetId = instanceId;
+            RefreshTargetEmphasis(instanceId);
+            RefreshLinks();
+        }
+
+        private void HandleTargetExited(string instanceId)
+        {
+            if (hoveredTargetId == instanceId)
+            {
+                hoveredTargetId = null;
+                RefreshTargetEmphasis(instanceId);
+                RefreshLinks();
+            }
+        }
+
         private bool RemoveSelectedTarget(string instanceId)
         {
             bool removedPrimary = primaryTargets.Remove(instanceId);
@@ -231,6 +280,25 @@ namespace KLTN.Game.Presentation
         #endregion
 
         #region Rendering
+
+        /// <summary>
+        /// Hides draft links as soon as the host confirms an ability. The old snapshot
+        /// remains visible during the cast/death animation, so snapshot cleanup alone
+        /// would leave beams attached to cards that are already shattering.
+        /// </summary>
+        public void SuspendLinksForResolution()
+        {
+            if (pendingSelection == null)
+            {
+                return;
+            }
+
+            linksSuspendedForResolution = true;
+            hoveredTargetId = null;
+            targetLinks?.SetLinks(null, null, null);
+            SetPrompt(string.Empty);
+            SetCancelButtonVisible(false);
+        }
 
         private void RefreshPresentation()
         {
@@ -262,6 +330,9 @@ namespace KLTN.Game.Presentation
                 return;
             }
 
+            // A crack restores the scale it captured when selection began. Release it
+            // before restoring normal target visuals, otherwise that old emphasis sticks.
+            ClearCrackPreviews();
             boardPresenter.ClearAbilityTargetVisuals();
 
             if (pendingSelection == null)
@@ -271,36 +342,299 @@ namespace KLTN.Game.Presentation
 
             foreach (string targetId in primaryTargets)
             {
-                ConfigureVisual(targetId, primarySelectedColor);
+                ConfigureVisual(targetId, primarySelectedColor, true);
             }
 
             foreach (string targetId in secondaryTargets)
             {
-                ConfigureVisual(targetId, secondarySelectedColor);
+                ConfigureVisual(targetId, secondarySelectedColor, true);
             }
 
             AbilityTargetRequirementDto current = FindCurrentRequirement();
 
-            if (current?.validTargetIds == null)
+            if (current?.validTargetIds != null)
+            {
+                foreach (string targetId in current.validTargetIds)
+                {
+                    if (!IsAlreadySelected(targetId))
+                    {
+                        ConfigureVisual(
+                            targetId,
+                            validTargetColor,
+                            targetId == hoveredTargetId
+                        );
+                    }
+                }
+            }
+
+            RefreshCrackPreviews();
+            RefreshLinks();
+        }
+
+        private void ConfigureVisual(string instanceId, Color color, bool emphasized)
+        {
+            if (boardPresenter.TryGetFaceUpVisual(instanceId, out NetworkCardVisual view))
+            {
+                view.SetAbilityTargetState(
+                    color,
+                    HandleTargetClicked,
+                    HandleTargetEntered,
+                    HandleTargetExited
+                );
+                view.SetAbilityTargetEmphasis(
+                    emphasized,
+                    targetScaleBoost,
+                    targetLift
+                );
+            }
+        }
+
+        private void RefreshTargetEmphasis(string instanceId)
+        {
+            if (boardPresenter.TryGetFaceUpVisual(instanceId, out NetworkCardVisual view))
+            {
+                view.SetAbilityTargetEmphasis(
+                    IsAlreadySelected(instanceId) || instanceId == hoveredTargetId,
+                    targetScaleBoost,
+                    targetLift
+                );
+            }
+        }
+
+        private void CreateTargetLinks()
+        {
+            Canvas selectionCanvas = boardPresenter?.AbilitySelectionSourceRoot == null
+                ? GetComponentInParent<Canvas>()
+                : boardPresenter.AbilitySelectionSourceRoot.GetComponentInParent<Canvas>();
+            Canvas rootCanvas = selectionCanvas?.rootCanvas;
+
+            if (rootCanvas == null || targetLinkInstance != null)
             {
                 return;
             }
 
-            foreach (string targetId in current.validTargetIds)
+            if (targetLinkPrefab != null)
             {
-                if (!IsAlreadySelected(targetId))
+                targetLinkInstance = Instantiate(targetLinkPrefab, rootCanvas.transform, false);
+                targetLinks = targetLinkInstance.GetComponentInChildren<AbilityTargetLinkGraphic>();
+
+                if (targetLinks == null)
                 {
-                    ConfigureVisual(targetId, validTargetColor);
+                    Debug.LogError("Target Link Prefab needs AbilityTargetLinkGraphic on a child.");
+                    Destroy(targetLinkInstance);
+                    targetLinkInstance = null;
+                }
+            }
+
+            if (targetLinkInstance == null)
+            {
+                targetLinkInstance = new GameObject(
+                    "AbilityTargetLinks",
+                    typeof(RectTransform),
+                    typeof(Canvas)
+                );
+                targetLinkInstance.transform.SetParent(rootCanvas.transform, false);
+
+                var beam = new GameObject(
+                    "Beams",
+                    typeof(RectTransform),
+                    typeof(CanvasRenderer),
+                    typeof(AbilityTargetLinkGraphic)
+                );
+                beam.transform.SetParent(targetLinkInstance.transform, false);
+                targetLinks = beam.GetComponent<AbilityTargetLinkGraphic>();
+            }
+
+            targetLinkInstance.layer = rootCanvas.gameObject.layer;
+            targetLinks.gameObject.layer = rootCanvas.gameObject.layer;
+
+            var rootRect = (RectTransform)targetLinkInstance.transform;
+            rootRect.anchorMin = Vector2.zero;
+            rootRect.anchorMax = Vector2.one;
+            rootRect.offsetMin = Vector2.zero;
+            rootRect.offsetMax = Vector2.zero;
+
+            var rect = targetLinks.rectTransform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            // Use an overlay sorting canvas independent of the world-space HUD canvas.
+            // The source card HUD sorts at 100; links remain above the board at 99.
+            Canvas linkCanvas = targetLinkInstance.GetComponent<Canvas>();
+            if (linkCanvas == null)
+            {
+                linkCanvas = targetLinkInstance.AddComponent<Canvas>();
+            }
+            linkCanvas.overrideSorting = true;
+            linkCanvas.sortingOrder = selectionCanvas != null
+                ? selectionCanvas.sortingOrder - 1
+                : rootCanvas.sortingOrder + 1;
+            targetLinks.raycastTarget = false;
+            targetLinks.maskable = false;
+        }
+
+        private void RefreshLinks()
+        {
+            if (pendingSelection != null && targetLinks == null)
+            {
+                CreateTargetLinks();
+            }
+
+            if (
+                targetLinks == null
+                || pendingSelection == null
+                || boardPresenter == null
+                || linksSuspendedForResolution
+            )
+            {
+                targetLinks?.SetLinks(null, null, null);
+                return;
+            }
+
+            RectTransform sourceRect = boardPresenter.AbilitySelectionSourceRoot;
+
+            if (sourceRect == null && boardPresenter.TryGetFaceUpVisual(
+                pendingSelection.sourceCardInstanceId,
+                out NetworkCardVisual source
+            ))
+            {
+                sourceRect = source.CardRect;
+            }
+
+            if (sourceRect == null)
+            {
+                targetLinks.SetLinks(null, null, null);
+                return;
+            }
+
+            var selected = new List<RectTransform>();
+
+            foreach (string id in primaryTargets)
+            {
+                AddLinkTarget(id, selected);
+            }
+
+            foreach (string id in secondaryTargets)
+            {
+                AddLinkTarget(id, selected);
+            }
+
+            RectTransform hovered = null;
+
+            if (
+                !string.IsNullOrEmpty(hoveredTargetId)
+                && boardPresenter.TryGetFaceUpVisual(
+                    hoveredTargetId,
+                    out NetworkCardVisual hoveredView
+                )
+            )
+            {
+                hovered = hoveredView.CardRect;
+            }
+
+            targetLinks.SetLinks(sourceRect, selected, hovered);
+        }
+
+        private void AddLinkTarget(string instanceId, List<RectTransform> targets)
+        {
+            if (boardPresenter.TryGetFaceUpVisual(instanceId, out NetworkCardVisual view))
+            {
+                targets.Add(view.CardRect);
+            }
+        }
+
+        private void RefreshCrackPreviews()
+        {
+            var selectedLethalIds = new HashSet<string>();
+
+            foreach (string id in primaryTargets)
+            {
+                if (IsLethalSelection(id))
+                {
+                    selectedLethalIds.Add(id);
+                }
+            }
+
+            foreach (string id in secondaryTargets)
+            {
+                if (IsLethalSelection(id))
+                {
+                    selectedLethalIds.Add(id);
+                }
+            }
+
+            var removed = new List<string>();
+
+            foreach (KeyValuePair<string, CardDeathFeedback> pair in previewCracks)
+            {
+                if (selectedLethalIds.Contains(pair.Key) && pair.Value != null)
+                {
+                    continue;
+                }
+
+                if (pair.Value != null)
+                {
+                    pair.Value.ClearTargetPreviewCrack();
+                }
+                removed.Add(pair.Key);
+            }
+
+            foreach (string id in removed)
+            {
+                previewCracks.Remove(id);
+            }
+
+            foreach (string id in selectedLethalIds)
+            {
+                if (
+                    previewCracks.ContainsKey(id)
+                    || !boardPresenter.TryGetFaceUpVisual(id, out NetworkCardVisual view)
+                )
+                {
+                    continue;
+                }
+
+                CardDeathFeedback feedback = view.GetComponent<CardDeathFeedback>();
+
+                if (feedback != null)
+                {
+                    feedback.ShowTargetPreviewCrack(id);
+                    previewCracks.Add(id, feedback);
                 }
             }
         }
 
-        private void ConfigureVisual(string instanceId, Color color)
+        private bool IsLethalSelection(string instanceId)
         {
-            if (boardPresenter.TryGetFaceUpVisual(instanceId, out NetworkCardVisual view))
+            if (pendingSelection?.requirements == null)
             {
-                view.SetAbilityTargetState(color, HandleTargetClicked);
+                return false;
             }
+
+            foreach (AbilityTargetRequirementDto requirement in pendingSelection.requirements)
+            {
+                if (Contains(requirement?.lethalTargetIds, instanceId))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void ClearCrackPreviews()
+        {
+            foreach (CardDeathFeedback feedback in previewCracks.Values)
+            {
+                if (feedback != null)
+                {
+                    feedback.ClearTargetPreviewCrack();
+                }
+            }
+
+            previewCracks.Clear();
         }
 
         private string BuildPrompt()

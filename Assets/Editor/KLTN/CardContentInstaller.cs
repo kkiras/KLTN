@@ -60,7 +60,8 @@ namespace KLTN.Game.Editor
                 3,
                 2,
                 UnitKeyword.None,
-                "Hỗ trợ: đồng minh được hỗ trợ nhận +2|+0 " + "trong vòng này.",
+                "Hỗ trợ khi tấn công hoặc phòng thủ: đồng minh "
+                    + "bên phải nhận +2|+0 trong vòng này.",
                 Passive(),
                 Ability(
                     "quy_cau_support",

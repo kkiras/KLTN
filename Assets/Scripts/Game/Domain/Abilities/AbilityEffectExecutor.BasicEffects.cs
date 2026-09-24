@@ -16,18 +16,37 @@ namespace KLTN.Game.Domain
         {
             if (effect.Target == EffectTarget.AlliedNexus)
             {
+                int healthBefore = state.Player(triggeredAbility.ListenerOwner).NexusHealth;
                 state
                     .Player(triggeredAbility.ListenerOwner)
                     .ApplyNexusDamage(effect.Amount);
+
+                RecordNexusEffect(
+                    state,
+                    triggeredAbility,
+                    EffectKind.Damage,
+                    triggeredAbility.ListenerOwner,
+                    healthBefore
+                );
 
                 return;
             }
 
             if (effect.Target == EffectTarget.EnemyNexus)
             {
+                SeatId targetOwner = triggeredAbility.ListenerOwner.Opponent();
+                int healthBefore = state.Player(targetOwner).NexusHealth;
                 state
-                    .Player(triggeredAbility.ListenerOwner.Opponent())
+                    .Player(targetOwner)
                     .ApplyNexusDamage(effect.Amount);
+
+                RecordNexusEffect(
+                    state,
+                    triggeredAbility,
+                    EffectKind.Damage,
+                    targetOwner,
+                    healthBefore
+                );
 
                 return;
             }
@@ -41,7 +60,19 @@ namespace KLTN.Game.Domain
                 )
             )
             {
+                AbilityCardState before = CaptureCard(target);
                 target.ApplyDamage(effect.Amount);
+
+                if (before.Health != target.CurrentHealth)
+                {
+                    RecordCardEffect(
+                        state,
+                        triggeredAbility,
+                        EffectKind.Damage,
+                        before,
+                        CaptureCard(target)
+                    );
+                }
             }
         }
 
@@ -105,7 +136,19 @@ namespace KLTN.Game.Domain
                 )
             )
             {
+                AbilityCardState before = CaptureCard(target);
                 target.Kill();
+
+                if (before.Health > 0)
+                {
+                    RecordCardEffect(
+                        state,
+                        triggeredAbility,
+                        effect.Kind,
+                        before,
+                        CaptureCard(target)
+                    );
+                }
             }
         }
 
@@ -240,7 +283,10 @@ namespace KLTN.Game.Domain
             }
         }
 
-        private static void ExecuteKillAllUnits(MatchState state)
+        private void ExecuteKillAllUnits(
+            MatchState state,
+            TriggeredAbility triggeredAbility
+        )
         {
             var targets = new List<CardInstance>();
 
@@ -250,11 +296,23 @@ namespace KLTN.Game.Domain
 
             foreach (CardInstance target in targets)
             {
+                AbilityCardState before = CaptureCard(target);
                 target.Kill();
+
+                if (before.Health > 0)
+                {
+                    RecordCardEffect(
+                        state,
+                        triggeredAbility,
+                        EffectKind.KillAllUnits,
+                        before,
+                        CaptureCard(target)
+                    );
+                }
             }
         }
 
-        private static void ExecuteHalfNexus(
+        private void ExecuteHalfNexus(
             MatchState state,
             TriggeredAbility triggeredAbility,
             EffectDefinition effect
@@ -280,9 +338,18 @@ namespace KLTN.Game.Domain
 
             PlayerState target = state.Player(targetOwner);
 
+            int healthBefore = target.NexusHealth;
             int damage = target.NexusHealth / 2;
 
             target.ApplyNexusDamage(damage);
+
+            RecordNexusEffect(
+                state,
+                triggeredAbility,
+                EffectKind.HalfNexus,
+                targetOwner,
+                healthBefore
+            );
         }
 
         #endregion

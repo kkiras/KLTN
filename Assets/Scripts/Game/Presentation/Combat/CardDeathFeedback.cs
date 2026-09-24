@@ -117,6 +117,7 @@ namespace KLTN.Game.Presentation
         private bool initialized;
         private int lethalSeed;
         private bool lethalPrepared;
+        private bool previewCrackPrepared;
 
         #endregion
 
@@ -141,6 +142,44 @@ namespace KLTN.Game.Presentation
         #region Public API
 
         /// <summary>
+        /// Shows a reversible crack while the local player has selected a lethal target.
+        /// No shard or gameplay state is created until the host resolves the effect.
+        /// </summary>
+        public void ShowTargetPreviewCrack(string instanceId)
+        {
+            Initialize();
+
+            if (visualRoot == null || previewCrackPrepared)
+            {
+                return;
+            }
+
+            if (lethalPrepared)
+            {
+                ResetImmediately();
+            }
+
+            CaptureVisualState();
+
+            lethalSeed = StableSeed(instanceId);
+            lethalPrepared = true;
+            previewCrackPrepared = true;
+
+            PrepareHighlight();
+            SetHighlightAlpha(highlightPeakAlpha * 0.45f);
+            PrepareCrack(lethalSeed);
+            crackOverlay?.SetReveal(1f);
+        }
+
+        public void ClearTargetPreviewCrack()
+        {
+            if (previewCrackPrepared)
+            {
+                ResetImmediately();
+            }
+        }
+
+        /// <summary>
         /// Fades in the lethal highlight and reveals the deterministic crack pattern.
         /// </summary>
         public IEnumerator ShowLethalHighlight(string instanceId)
@@ -152,7 +191,6 @@ namespace KLTN.Game.Presentation
                 yield break;
             }
 
-            ResetImmediately();
             CaptureVisualState();
 
             lethalSeed = StableSeed(instanceId);
@@ -191,9 +229,15 @@ namespace KLTN.Game.Presentation
                 yield return ShowLethalHighlight(instanceId);
             }
 
-            PrepareCrack(lethalSeed);
-
-            yield return AnimateCrack(lethalSeed);
+            if (previewCrackPrepared)
+            {
+                previewCrackPrepared = false;
+            }
+            else
+            {
+                PrepareCrack(lethalSeed);
+                yield return AnimateCrack(lethalSeed);
+            }
 
             BuildShards(lethalSeed);
             Canvas.ForceUpdateCanvases();
@@ -227,6 +271,7 @@ namespace KLTN.Game.Presentation
                 return;
             }
 
+            bool restoreVisual = lethalPrepared || shardLayer != null;
             DestroyShardLayer();
 
             if (cardCanvasGroup != null)
@@ -236,7 +281,7 @@ namespace KLTN.Game.Presentation
                 cardCanvasGroup.blocksRaycasts = canvasBaseBlocksRaycasts;
             }
 
-            if (visualRoot != null)
+            if (visualRoot != null && restoreVisual)
             {
                 visualRoot.gameObject.SetActive(true);
                 visualRoot.anchoredPosition = visualHomePosition;
@@ -258,6 +303,7 @@ namespace KLTN.Game.Presentation
 
             lethalSeed = 0;
             lethalPrepared = false;
+            previewCrackPrepared = false;
         }
 
         #endregion

@@ -82,19 +82,11 @@ public sealed class AuthUIManager : MonoBehaviour
     #endregion
 
     #region Panel Navigation
-
-    public void ShowLoginMethods()
-    {
-        if (IsBusy) { return; }
-
-        SetPanelState(showLoginMethods: true, showLogin: false, showRegister: false);
-    }
-
     public void ShowLogin()
     {
         if (IsBusy) { return; }
 
-        SetPanelState(showLoginMethods: false, showLogin: true, showRegister: false);
+        SetPanelState(showLoginMethods: true, showLogin: true, showRegister: false);
     }
 
     public void ShowRegister()

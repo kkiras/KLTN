@@ -177,12 +177,22 @@ namespace KLTN.Game.Domain
                     continue;
                 }
 
+                AbilityCardState before = CaptureCard(target);
+
                 if (!owner.TryReviveCardToReserve(target, definition))
                 {
                     continue;
                 }
 
                 ReviveStatCalculator.ApplyDeathScaling(state, target, definition);
+
+                RecordCardEffect(
+                    state,
+                    triggeredAbility,
+                    EffectKind.Revive,
+                    before,
+                    CaptureCard(target)
+                );
 
                 emittedEvents.Add(
                     GameEvent.FromCard(

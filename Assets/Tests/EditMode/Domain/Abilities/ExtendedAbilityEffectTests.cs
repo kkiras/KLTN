@@ -352,6 +352,42 @@ namespace KLTN.Game.Domain.Tests
             );
 
             Assert.AreEqual(10, state.Guest.NexusHealth);
+
+            AbilityResolution visual = state.TakeAbilityResolution();
+            Assert.AreEqual(1, visual.Events.Count);
+            Assert.AreEqual(EffectKind.HalfNexus, visual.Events[0].Kind);
+            Assert.AreEqual(19, visual.Events[0].NexusHealthBefore);
+            Assert.AreEqual(10, visual.Events[0].NexusHealthAfter);
+        }
+
+        [Test]
+        public void DamageCard_RecordsBeforeAndAfterForPresentation()
+        {
+            MatchState state = CreateState();
+            CardDefinition sourceDefinition = Unit("source");
+            CardDefinition targetDefinition = Unit("target", health: 4);
+            var definitions = Definitions(sourceDefinition, targetDefinition);
+
+            CardInstance source = AddReserveCard(state.Host, 1, sourceDefinition);
+            CardInstance target = AddReserveCard(state.Guest, 2, targetDefinition);
+
+            Execute(
+                state,
+                definitions,
+                source,
+                new EffectDefinition(
+                    EffectKind.Damage,
+                    EffectTarget.WeakestEnemies,
+                    amount: 2,
+                    count: 1
+                )
+            );
+
+            AbilityResolution visual = state.TakeAbilityResolution();
+            Assert.AreEqual(1, visual.Events.Count);
+            Assert.AreEqual(4, visual.Events[0].TargetBefore.Health);
+            Assert.AreEqual(2, visual.Events[0].TargetAfter.Health);
+            Assert.AreEqual(target.InstanceId, visual.Events[0].TargetAfter.InstanceId);
         }
 
         private static GameEventBatch Execute(

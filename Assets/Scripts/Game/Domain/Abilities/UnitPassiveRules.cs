@@ -302,12 +302,26 @@ namespace KLTN.Game.Domain
                     break;
                 }
 
+                AbilityCardState before = AbilityCardState.Capture(card, definition);
+
                 if (!player.TryReviveCardToReserve(card, definition))
                 {
                     continue;
                 }
 
                 ReviveStatCalculator.ApplyDeathScaling(state, card, definition);
+
+                state.RecordAbilityResolution(
+                    new AbilityResolutionEvent(
+                        state.NextAbilityResolutionSequence(),
+                        null,
+                        EffectKind.Revive,
+                        null,
+                        before,
+                        AbilityCardState.Capture(card, definition),
+                        isRoundStartPassive: true
+                    )
+                );
 
                 events.Add(
                     GameEvent.FromCard(

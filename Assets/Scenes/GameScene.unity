@@ -2045,6 +2045,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b539d66cc7fd57944a44fffb391d2a6f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KLTN.Game.Presentation.CombatAnimationDirector
+  abilityProjectileDuration: 0.36
+  abilityProjectileArc: 80
+  abilityProjectileSizeMultiplier: 10
+  abilityCastPulseDuration: 0.2
+  abilityImpactDuration: 0.32
+  abilityReviveLightningDuration: 0.24
+  abilityReviveDuration: 0.68
+  damageProjectileColor: {r: 1, g: 0.47, b: 0.08, a: 1}
+  killProjectileColor: {r: 0.65, g: 0.21, b: 0.96, a: 1}
+  reviveFlashColor: {r: 0.38, g: 0.94, b: 1, a: 1}
+  selfAbilityNexusTarget: {fileID: 0}
+  opponentAbilityNexusTarget: {fileID: 0}
   matchResultPresenter: {fileID: 1566909091}
   boardPresenter: {fileID: 789479152}
   animationLayer: {fileID: 1306502258}
@@ -5013,9 +5025,12 @@ MonoBehaviour:
   actionControls: {fileID: 789479151}
   promptLabel: {fileID: 827662873}
   cancelButton: {fileID: 1188374426}
+  targetLinkPrefab: {fileID: 1756333837461089945, guid: 7387f56b904510b4cb6be6eaed5b7ea5, type: 3}
   validTargetColor: {r: 1, g: 0.75, b: 0.1, a: 0.25}
   primarySelectedColor: {r: 0.15, g: 0.9, b: 1, a: 0.42}
   secondarySelectedColor: {r: 1, g: 0.2, b: 0.55, a: 0.42}
+  targetScaleBoost: 0.2
+  targetLift: 20
 --- !u!1 &814468876
 GameObject:
   m_ObjectHideFlags: 0

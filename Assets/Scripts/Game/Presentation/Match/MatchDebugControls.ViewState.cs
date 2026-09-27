@@ -51,7 +51,10 @@ namespace KLTN.Game.Presentation
         {
             MatchSnapshotDto snapshot = projection?.Current;
 
-            if (snapshot == null || !snapshot.viewerCanDeclareAttack)
+            if (
+                snapshot == null
+                || (!snapshot.viewerCanDeclareAttack && !snapshot.viewerCanDeclareBlock)
+            )
             {
                 return;
             }

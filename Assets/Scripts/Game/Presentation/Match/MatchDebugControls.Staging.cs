@@ -209,10 +209,15 @@ namespace KLTN.Game.Presentation
 
         public bool TryReturnBoardCardToReserve(DraggableHandCard card)
         {
+            MatchSnapshotDto snapshot = projection?.Current;
+
             if (
                 card == null
                 || card.HomeLocation != CardVisualLocation.Reserve
                 || submitting
+                || snapshot == null
+                || (!snapshot.viewerCanDeclareAttack && !snapshot.viewerCanDeclareBlock)
+                || !IsCardInSelfReserve(snapshot, card.Visual.InstanceId)
             )
             {
                 return false;

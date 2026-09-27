@@ -117,6 +117,25 @@ namespace KLTN.Game.Domain
             state.ConsecutivePasses = 0;
             state.Phase = MatchPhase.CombatResolution;
 
+            // In this game's Support variant, adjacent blockers support each other
+            // before damage is calculated, just as adjacent attackers do.
+            EnqueueAndResolveAbilities(
+                state,
+                BuildDeclarationEventBatch(
+                    state.RoundNumber,
+                    selectedBlockers,
+                    includeAttackEvents: false
+                )
+            );
+
+            UpdateOutcome(state);
+
+            if (state.IsFinished)
+            {
+                state.Phase = MatchPhase.Finished;
+                return CommandResult.Success();
+            }
+
             GameEventBatch deathEventBatch;
 
             RoundResolution resolution = ResolveCombat(

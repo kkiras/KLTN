@@ -138,9 +138,10 @@ namespace KLTN.Game.Domain
 
             state.ActiveSeat = actor.Opponent();
 
-            GameEventBatch attackEvents = BuildAttackEventBatch(
+            GameEventBatch attackEvents = BuildDeclarationEventBatch(
                 state.RoundNumber,
-                selectedCards
+                selectedCards,
+                includeAttackEvents: true
             );
 
             EnqueueAndResolveAbilities(
@@ -172,38 +173,46 @@ namespace KLTN.Game.Domain
             return CommandResult.Success();
         }
 
-        private static GameEventBatch BuildAttackEventBatch(
+        /// <summary>
+        /// Emits Support for adjacent committed units. Attack declarations also emit
+        /// Attack events; block declarations use the same adjacency rule without them.
+        /// </summary>
+        private static GameEventBatch BuildDeclarationEventBatch(
             int roundNumber,
-            CardInstance[] attackersBySlot
+            CardInstance[] cardsBySlot,
+            bool includeAttackEvents
         )
         {
             var events = new List<GameEvent>();
 
-            for (int slotIndex = 0; slotIndex < attackersBySlot.Length; slotIndex++)
+            for (int slotIndex = 0; slotIndex < cardsBySlot.Length; slotIndex++)
             {
-                CardInstance attacker = attackersBySlot[slotIndex];
+                CardInstance source = cardsBySlot[slotIndex];
 
-                if (attacker == null)
+                if (source == null)
                 {
                     continue;
                 }
 
-                events.Add(
-                    GameEvent.FromCard(
-                        GameEventType.AttackDeclared,
-                        roundNumber,
-                        attacker
-                    )
-                );
+                if (includeAttackEvents)
+                {
+                    events.Add(
+                        GameEvent.FromCard(
+                            GameEventType.AttackDeclared,
+                            roundNumber,
+                            source
+                        )
+                    );
+                }
 
                 int supportedSlot = slotIndex + 1;
 
-                if (supportedSlot >= attackersBySlot.Length)
+                if (supportedSlot >= cardsBySlot.Length)
                 {
                     continue;
                 }
 
-                CardInstance supportedUnit = attackersBySlot[supportedSlot];
+                CardInstance supportedUnit = cardsBySlot[supportedSlot];
 
                 if (supportedUnit == null)
                 {
@@ -214,7 +223,7 @@ namespace KLTN.Game.Domain
                     GameEvent.FromCard(
                         GameEventType.UnitSupported,
                         roundNumber,
-                        attacker,
+                        source,
                         supportedUnit
                     )
                 );

@@ -270,6 +270,40 @@ namespace KLTN.Game.Domain
             int slotIndex
         )
         {
+            return TryReviveCardToBoard(
+                card,
+                definition,
+                slotIndex,
+                requireActiveRosterSpace: true
+            );
+        }
+
+        /// <summary>
+        /// Revives a unit directly into an empty attack slot for a triggered attack.
+        /// This special transition may temporarily exceed the active-roster cap because
+        /// the unit participates only in the current combat; Board capacity still applies.
+        /// </summary>
+        internal bool TryReviveCardToBoardForTriggeredAttack(
+            CardInstance card,
+            CardDefinition definition,
+            int slotIndex
+        )
+        {
+            return TryReviveCardToBoard(
+                card,
+                definition,
+                slotIndex,
+                requireActiveRosterSpace: false
+            );
+        }
+
+        private bool TryReviveCardToBoard(
+            CardInstance card,
+            CardDefinition definition,
+            int slotIndex,
+            bool requireActiveRosterSpace
+        )
+        {
             if (
                 card == null
                 || definition == null
@@ -282,7 +316,7 @@ namespace KLTN.Game.Domain
                     definition.Id,
                     StringComparison.Ordinal
                 )
-                || !HasActiveRosterSpace
+                || (requireActiveRosterSpace && !HasActiveRosterSpace)
             )
             {
                 return false;

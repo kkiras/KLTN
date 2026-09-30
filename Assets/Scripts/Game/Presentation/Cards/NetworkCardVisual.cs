@@ -9,7 +9,11 @@ using UnityEngine.UI;
 
 namespace KLTN.Game.Presentation
 {
-    public sealed class NetworkCardVisual : MonoBehaviour, IPointerClickHandler
+    public sealed class NetworkCardVisual :
+        MonoBehaviour,
+        IPointerClickHandler,
+        IPointerEnterHandler,
+        IPointerExitHandler
     {
         #region Serialized Fields
 
@@ -53,6 +57,8 @@ namespace KLTN.Game.Presentation
         private CardArtworkView currentArtworkPrefab;
         private CardArtworkView spawnedArtwork;
         private Action<string> abilityTargetClicked;
+        private Action<string> abilityTargetEntered;
+        private Action<string> abilityTargetExited;
         private int authoritativeDamage;
         private int authoritativeHealth;
 
@@ -65,6 +71,9 @@ namespace KLTN.Game.Presentation
         public int Energy { get; private set; }
         public int SupportDamageBonus { get; private set; }
         public int SupportHealthBonus { get; private set; }
+        public bool IsOpponentCard { get; private set; }
+        public RectTransform ArtworkMount => artworkMount;
+        public RectTransform CardRect => transform as RectTransform;
 
         #endregion
 
@@ -209,6 +218,21 @@ namespace KLTN.Game.Presentation
 
         #region Visual State
 
+        public void SetOwnerPerspective(bool isOpponentCard)
+        {
+            IsOpponentCard = isOpponentCard;
+        }
+
+        public void SetAbilityTargetEmphasis(bool emphasized, float scaleBoost, float lift)
+        {
+            GetComponent<CardVisualLayout>()?.SetSelectionEmphasis(
+                emphasized,
+                IsOpponentCard,
+                scaleBoost,
+                lift
+            );
+        }
+
         public void SetPending(bool value)
         {
             if (pendingOverlay != null)
@@ -230,9 +254,16 @@ namespace KLTN.Game.Presentation
             SetDisplayedStats(authoritativeDamage, authoritativeHealth);
         }
 
-        public void SetAbilityTargetState(Color color, Action<string> clickHandler)
+        public void SetAbilityTargetState(
+            Color color,
+            Action<string> clickHandler,
+            Action<string> enterHandler = null,
+            Action<string> exitHandler = null
+        )
         {
             abilityTargetClicked = clickHandler;
+            abilityTargetEntered = enterHandler;
+            abilityTargetExited = exitHandler;
 
             if (abilityTargetOverlay == null)
             {
@@ -249,6 +280,9 @@ namespace KLTN.Game.Presentation
         public void ClearAbilityTargetState()
         {
             abilityTargetClicked = null;
+            abilityTargetEntered = null;
+            abilityTargetExited = null;
+            SetAbilityTargetEmphasis(false, 0f, 0f);
 
             if (abilityTargetOverlay != null)
             {
@@ -268,6 +302,22 @@ namespace KLTN.Game.Presentation
             }
 
             abilityTargetClicked.Invoke(InstanceId);
+        }
+
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            if (!string.IsNullOrWhiteSpace(InstanceId))
+            {
+                abilityTargetEntered?.Invoke(InstanceId);
+            }
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            if (!string.IsNullOrWhiteSpace(InstanceId))
+            {
+                abilityTargetExited?.Invoke(InstanceId);
+            }
         }
 
         public void SetInteractableVisual(bool value)

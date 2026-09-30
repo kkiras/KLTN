@@ -183,6 +183,52 @@ namespace KLTN.Game.Domain.Tests
         }
 
         [Test]
+        public void ReviveStrongestDeadAlly_ConsidersPreviousRoundDeaths()
+        {
+            MatchState state = CreateState();
+
+            CardDefinition sourceDefinition = Unit("linh_mieu");
+
+            CardDefinition oldStrongDefinition = Unit(
+                "ma_tranh",
+                health: 6,
+                damage: 8
+            );
+
+            CardDefinition currentWeakDefinition = Unit(
+                "current_weak",
+                health: 2,
+                damage: 2
+            );
+
+            var definitions = Definitions(
+                sourceDefinition,
+                oldStrongDefinition,
+                currentWeakDefinition
+            );
+
+            CardInstance source = AddReserveCard(state.Host, 1, sourceDefinition);
+
+            CardInstance oldStrong = AddDeadCard(state, oldStrongDefinition, 2);
+
+            state.RoundHistory.AdvanceToRound(2);
+            state.RoundNumber = 2;
+
+            CardInstance currentWeak = AddDeadCard(state, currentWeakDefinition, 3);
+
+            Execute(
+                state,
+                definitions,
+                source,
+                new EffectDefinition(EffectKind.Revive, EffectTarget.StrongestDeadAlly)
+            );
+
+            CollectionAssert.Contains(state.Host.Reserve, oldStrong);
+            CollectionAssert.Contains(state.Host.Graveyard, currentWeak);
+            Assert.AreEqual(CardZone.Reserve, oldStrong.Zone);
+        }
+
+        [Test]
         public void CopyRandomDeadAlly_CreatesNewHandInstance()
         {
             MatchState state = CreateState();
@@ -306,6 +352,42 @@ namespace KLTN.Game.Domain.Tests
             );
 
             Assert.AreEqual(10, state.Guest.NexusHealth);
+
+            AbilityResolution visual = state.TakeAbilityResolution();
+            Assert.AreEqual(1, visual.Events.Count);
+            Assert.AreEqual(EffectKind.HalfNexus, visual.Events[0].Kind);
+            Assert.AreEqual(19, visual.Events[0].NexusHealthBefore);
+            Assert.AreEqual(10, visual.Events[0].NexusHealthAfter);
+        }
+
+        [Test]
+        public void DamageCard_RecordsBeforeAndAfterForPresentation()
+        {
+            MatchState state = CreateState();
+            CardDefinition sourceDefinition = Unit("source");
+            CardDefinition targetDefinition = Unit("target", health: 4);
+            var definitions = Definitions(sourceDefinition, targetDefinition);
+
+            CardInstance source = AddReserveCard(state.Host, 1, sourceDefinition);
+            CardInstance target = AddReserveCard(state.Guest, 2, targetDefinition);
+
+            Execute(
+                state,
+                definitions,
+                source,
+                new EffectDefinition(
+                    EffectKind.Damage,
+                    EffectTarget.WeakestEnemies,
+                    amount: 2,
+                    count: 1
+                )
+            );
+
+            AbilityResolution visual = state.TakeAbilityResolution();
+            Assert.AreEqual(1, visual.Events.Count);
+            Assert.AreEqual(4, visual.Events[0].TargetBefore.Health);
+            Assert.AreEqual(2, visual.Events[0].TargetAfter.Health);
+            Assert.AreEqual(target.InstanceId, visual.Events[0].TargetAfter.InstanceId);
         }
 
         private static GameEventBatch Execute(

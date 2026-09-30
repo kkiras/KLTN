@@ -103,6 +103,138 @@ namespace KLTN.Game.Domain.Tests
         }
 
         [Test]
+        public void ConditionalSummon_KillsTwoWeakestEnemiesAfterAlliedDeath()
+        {
+            MatchState state = CreateReadyState();
+
+            var killWeakest = new AbilityDefinition(
+                "ma_tranh_summon",
+                AbilityTrigger.Summon,
+                new[]
+                {
+                    new EffectDefinition(
+                        EffectKind.Kill,
+                        EffectTarget.WeakestEnemies,
+                        count: 2
+                    ),
+                },
+                condition: AbilityCondition.AllyDiedThisRound
+            );
+
+            var maTranhDefinition = new CardDefinition(
+                "ma_tranh",
+                "Ma Trành",
+                6,
+                8,
+                8,
+                UnitKeyword.Fearsome,
+                new[] { killWeakest }
+            );
+
+            var allyDefinition = new CardDefinition("ally", "Ally", 2, 2, 1);
+
+            var weakDefinition = new CardDefinition("weak", "Weak", 2, 1, 1);
+
+            var mediumDefinition = new CardDefinition(
+                "medium",
+                "Medium",
+                3,
+                2,
+                1
+            );
+
+            var strongDefinition = new CardDefinition(
+                "strong",
+                "Strong",
+                4,
+                5,
+                1
+            );
+
+            var definitions = new Dictionary<string, CardDefinition>
+            {
+                { maTranhDefinition.Id, maTranhDefinition },
+                { allyDefinition.Id, allyDefinition },
+                { weakDefinition.Id, weakDefinition },
+                { mediumDefinition.Id, mediumDefinition },
+                { strongDefinition.Id, strongDefinition },
+            };
+
+            var deadAlly = new CardInstance(
+                1,
+                allyDefinition.Id,
+                SeatId.Host,
+                CardZone.Reserve,
+                allyDefinition.BaseHealth
+            );
+
+            state.Host.Reserve.Add(deadAlly);
+            deadAlly.Kill();
+
+            Assert.IsTrue(state.Host.TryMoveDeadActiveCardToGraveyard(deadAlly));
+
+            state.RoundHistory.RecordDeath(
+                deadAlly,
+                allyDefinition.BaseDamage,
+                allyDefinition.BaseHealth
+            );
+
+            CardInstance source = AddHandCard(
+                state.Host,
+                2,
+                maTranhDefinition.Id,
+                maTranhDefinition.BaseHealth
+            );
+
+            var weak = new CardInstance(
+                10,
+                weakDefinition.Id,
+                SeatId.Guest,
+                CardZone.Reserve,
+                weakDefinition.BaseHealth
+            );
+
+            var medium = new CardInstance(
+                11,
+                mediumDefinition.Id,
+                SeatId.Guest,
+                CardZone.Reserve,
+                mediumDefinition.BaseHealth
+            );
+
+            var strong = new CardInstance(
+                12,
+                strongDefinition.Id,
+                SeatId.Guest,
+                CardZone.Reserve,
+                strongDefinition.BaseHealth
+            );
+
+            state.Guest.Reserve.Add(weak);
+            state.Guest.Reserve.Add(medium);
+            state.Guest.Reserve.Add(strong);
+
+            var engine = new MatchRulesEngine(definitions);
+
+            CommandResult result = engine.TrySummonUnit(
+                state,
+                SeatId.Host,
+                source.InstanceId
+            );
+
+            Assert.IsTrue(result.Accepted);
+            CollectionAssert.Contains(state.Guest.Graveyard, weak);
+            CollectionAssert.Contains(state.Guest.Graveyard, medium);
+            CollectionAssert.Contains(state.Guest.Reserve, strong);
+
+            AbilityResolution visual = state.TakeAbilityResolution();
+            Assert.AreEqual(2, visual.Events.Count);
+            Assert.AreEqual(EffectKind.Kill, visual.Events[0].Kind);
+            Assert.AreEqual(weak.InstanceId, visual.Events[0].TargetBefore.InstanceId);
+            Assert.AreEqual(medium.InstanceId, visual.Events[1].TargetBefore.InstanceId);
+        }
+
+        [Test]
         public void TargetedPlay_OpensSelectionWithoutMutation()
         {
             MatchState state = CreateReadyState();
@@ -315,6 +447,13 @@ namespace KLTN.Game.Domain.Tests
             Assert.AreEqual(1, state.Guest.DrawHand.Count);
 
             Assert.AreEqual(19, state.Host.NexusHealth);
+
+            AbilityResolution visual = state.TakeAbilityResolution();
+            Assert.AreEqual(1, visual.Events.Count);
+            Assert.AreEqual(EffectKind.Damage, visual.Events[0].Kind);
+            Assert.AreEqual(SeatId.Host, visual.Events[0].NexusOwner);
+            Assert.AreEqual(20, visual.Events[0].NexusHealthBefore);
+            Assert.AreEqual(19, visual.Events[0].NexusHealthAfter);
         }
 
         [Test]

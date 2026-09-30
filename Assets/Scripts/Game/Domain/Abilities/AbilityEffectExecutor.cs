@@ -129,7 +129,7 @@ namespace KLTN.Game.Domain
                     return;
 
                 case EffectKind.KillAllUnits:
-                    ExecuteKillAllUnits(state);
+                    ExecuteKillAllUnits(state, triggeredAbility);
                     return;
 
                 case EffectKind.HalfNexus:

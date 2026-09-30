@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: LinhMieu
   m_EditorClassIdentifier: Assembly-CSharp::CMCMProductions.Card
   cardName: "Linh Mi\xEAu"
-  rulesText: "Summon: h\u1ED3i sinh \u0111\u1ED3ng minh m\u1EA1nh nh\u1EA5t \u0111\xE3
-    ch\u1EBFt trong v\xF2ng n\xE0y."
+  rulesText: "Summon: h\u1ED3i sinh \u0111\u1ED3ng minh m\u1EA1nh nh\u1EA5t \u0111ang
+    \u1EDF Graveyard, x\xE9t tr\xEAn to\xE0n b\u1ED9 tr\u1EADn \u0111\u1EA5u."
   cardType: 
   health: 4
   damage: 4

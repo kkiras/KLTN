@@ -1,3 +1,4 @@
+using KLTN.Game.Networking;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -108,8 +109,10 @@ namespace KLTN.Game.Presentation
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (!canDrag || dragLayer == null)
+            if (dragLayer == null || !CanDragNow())
             {
+                canDrag = false;
+                visual.SetInteractableVisual(false);
                 return;
             }
 
@@ -197,12 +200,12 @@ namespace KLTN.Game.Presentation
             isPending = true;
             pendingParent = targetParent;
             pendingLocation = location;
-            canDrag = true;
+            canDrag = CanDragNow();
 
             ApplyPendingPlacement(targetParent, location);
 
             visual.SetPending(true);
-            visual.SetInteractableVisual(true);
+            visual.SetInteractableVisual(canDrag);
         }
 
         private void RestorePendingPlacement()
@@ -215,9 +218,9 @@ namespace KLTN.Game.Presentation
 
             ApplyPendingPlacement(pendingParent, pendingLocation);
 
-            canDrag = true;
+            canDrag = CanDragNow();
             visual.SetPending(true);
-            visual.SetInteractableVisual(true);
+            visual.SetInteractableVisual(canDrag);
         }
 
         private void ApplyPendingPlacement(
@@ -262,9 +265,9 @@ namespace KLTN.Game.Presentation
             rectTransform.pivot = homePivot;
             rectTransform.localScale = Vector3.one;
             rectTransform.localRotation = Quaternion.identity;
-            canDrag = true;
+            canDrag = CanDragNow();
             visual.SetPending(false);
-            visual.SetInteractableVisual(true);
+            visual.SetInteractableVisual(canDrag);
 
             if (homeParent is RectTransform homeRoot)
             {
@@ -275,6 +278,65 @@ namespace KLTN.Game.Presentation
         #endregion
 
         #region Helpers
+
+        /// <summary>
+        /// Rechecks the latest viewer-filtered snapshot before dragging. A temporary
+        /// animation view or a stale local draft must never grant gameplay authority.
+        /// </summary>
+        private bool CanDragNow()
+        {
+            if (!canDrag || visual == null || string.IsNullOrEmpty(visual.InstanceId))
+            {
+                return false;
+            }
+
+            MatchSnapshotDto snapshot = MatchProjectionRegistry.Current.Current;
+
+            if (snapshot?.self == null)
+            {
+                return false;
+            }
+
+            CardViewDto[] cards;
+
+            if (homeLocation == CardVisualLocation.Hand)
+            {
+                if (!snapshot.viewerCanAct)
+                {
+                    return false;
+                }
+
+                cards = snapshot.self.hand;
+            }
+            else if (homeLocation == CardVisualLocation.Reserve)
+            {
+                if (!snapshot.viewerCanDeclareAttack && !snapshot.viewerCanDeclareBlock)
+                {
+                    return false;
+                }
+
+                cards = snapshot.self.reserve;
+            }
+            else
+            {
+                return false;
+            }
+
+            if (cards == null)
+            {
+                return false;
+            }
+
+            foreach (CardViewDto card in cards)
+            {
+                if (card != null && card.instanceId == visual.InstanceId)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         private void MoveToPointer(PointerEventData eventData)
         {

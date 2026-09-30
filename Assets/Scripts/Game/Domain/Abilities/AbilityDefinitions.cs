@@ -18,6 +18,7 @@ namespace KLTN.Game.Domain
         Play,
         Summon,
         Attack,
+        /// <summary>Adjacent units support on both attack and block declarations.</summary>
         Support,
         RoundStart,
         Death,

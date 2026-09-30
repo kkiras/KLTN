@@ -44,6 +44,7 @@ namespace KLTN.Game.Presentation
 
         private RectTransform rectTransform;
         private LayoutElement layoutElement;
+        private Vector3 normalVisualScale = Vector3.one;
 
         #endregion
 
@@ -96,6 +97,29 @@ namespace KLTN.Game.Presentation
             ApplyRootSize(targetSize);
             ApplyVisualScale(targetSize);
             RebuildParentLayout();
+        }
+
+        /// <summary>
+        /// Emphasizes only the rendered artwork; the layout root keeps its normal size
+        /// so neighbouring Hand and Reserve cards do not jump when a target is hovered.
+        /// </summary>
+        public void SetSelectionEmphasis(
+            bool emphasized,
+            bool isOpponent,
+            float scaleBoost,
+            float lift
+        )
+        {
+            if (visualRoot == null)
+            {
+                return;
+            }
+
+            visualRoot.localScale = normalVisualScale
+                * (emphasized ? 1f + Mathf.Max(0f, scaleBoost) : 1f);
+            visualRoot.anchoredPosition = emphasized
+                ? Vector2.up * (isOpponent ? -lift : lift)
+                : Vector2.zero;
         }
 
         #endregion
@@ -159,7 +183,8 @@ namespace KLTN.Game.Presentation
 
             // Uniform scale prevents text and artwork distortion.
             float uniformScale = Mathf.Min(widthScale, heightScale);
-            visualRoot.localScale = new Vector3(uniformScale, uniformScale, 1f);
+            normalVisualScale = new Vector3(uniformScale, uniformScale, 1f);
+            visualRoot.localScale = normalVisualScale;
         }
 
         #endregion

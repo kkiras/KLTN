@@ -136,13 +136,27 @@ namespace KLTN.Game.Networking
                     ? null
                     : resolutionDtoMapper.Build(resolution, matchState);
 
+            AbilityResolution abilityResolution = matchState?.TakeAbilityResolution();
+            var abilityMapper = new AbilityResolutionDtoMapper(definitionsById);
+
             RoundTransitionDto roundTransitionDto = BuildRoundTransitionDto(
                 roundTransition
             );
 
             foreach (KeyValuePair<ulong, SeatId> pair in seatByClient)
             {
-                SendUpdate(pair.Key, pair.Value, resolutionDto, roundTransitionDto);
+                AbilityResolutionDto abilityDto = abilityMapper.Build(
+                    abilityResolution,
+                    pair.Value
+                );
+
+                SendUpdate(
+                    pair.Key,
+                    pair.Value,
+                    resolutionDto,
+                    roundTransitionDto,
+                    abilityDto
+                );
             }
         }
 
@@ -150,7 +164,8 @@ namespace KLTN.Game.Networking
             ulong targetClientId,
             SeatId viewerSeat,
             RoundResolutionDto resolution,
-            RoundTransitionDto roundTransition = null
+            RoundTransitionDto roundTransition = null,
+            AbilityResolutionDto abilityResolution = null
         )
         {
             bool isVisible = NetworkObject.IsNetworkVisibleTo(targetClientId);
@@ -177,6 +192,9 @@ namespace KLTN.Game.Networking
                 hasRoundTransition = roundTransition != null,
 
                 roundTransition = roundTransition,
+
+                hasAbilityResolution = abilityResolution != null,
+                abilityResolution = abilityResolution,
             };
 
             string json = JsonUtility.ToJson(update);

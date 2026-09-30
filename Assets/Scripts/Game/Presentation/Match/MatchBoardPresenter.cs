@@ -72,6 +72,8 @@ namespace KLTN.Game.Presentation
 
         public event Action FaceUpViewsRendered;
 
+        public RectTransform AbilitySelectionSourceRoot => abilitySelectionSourceRoot;
+
         #endregion
 
         #region Unity Lifecycle
@@ -130,12 +132,13 @@ namespace KLTN.Game.Presentation
             RenderReserve(
                 snapshot.self.reserve,
                 selfReserveRoot,
-                canDrag: snapshot.viewerCanDeclareAttack || snapshot.viewerCanDeclareBlock
+                canDrag: snapshot.viewerCanDeclareAttack || snapshot.viewerCanDeclareBlock,
+                isOpponent: false
             );
 
-            RenderReserve(snapshot.opponent.reserve, opponentReserveRoot, canDrag: false);
-            RenderBoard(snapshot.self.board, selfBoardSlots);
-            RenderBoard(snapshot.opponent.board, opponentBoardSlots);
+            RenderReserve(snapshot.opponent.reserve, opponentReserveRoot, false, true);
+            RenderBoard(snapshot.self.board, selfBoardSlots, false);
+            RenderBoard(snapshot.opponent.board, opponentBoardSlots, true);
             FaceUpViewsRendered?.Invoke();
         }
 
@@ -242,7 +245,8 @@ namespace KLTN.Game.Presentation
         private void RenderReserve(
             CardViewDto[] cards,
             RectTransform reserveRoot,
-            bool canDrag
+            bool canDrag,
+            bool isOpponent
         )
         {
             if (cards == null || reserveRoot == null)
@@ -252,11 +256,11 @@ namespace KLTN.Game.Presentation
 
             foreach (CardViewDto dto in cards)
             {
-                CreateFaceUpCard(dto, reserveRoot, canDrag, CardVisualLocation.Reserve);
+                CreateFaceUpCard(dto, reserveRoot, canDrag, CardVisualLocation.Reserve, isOpponent);
             }
         }
 
-        private void RenderBoard(CardViewDto[] cards, RectTransform[] slots)
+        private void RenderBoard(CardViewDto[] cards, RectTransform[] slots, bool isOpponent)
         {
             if (cards == null || slots == null || slots.Length < 3)
             {
@@ -278,7 +282,8 @@ namespace KLTN.Game.Presentation
                     dto,
                     slots[dto.boardSlotIndex],
                     false,
-                    CardVisualLocation.Board
+                    CardVisualLocation.Board,
+                    isOpponent
                 );
             }
         }
@@ -287,7 +292,8 @@ namespace KLTN.Game.Presentation
             CardViewDto dto,
             RectTransform parent,
             bool canDrag,
-            CardVisualLocation location
+            CardVisualLocation location,
+            bool isOpponent = false
         )
         {
             NetworkCardVisual view = Instantiate(cardPrefab, parent);
@@ -299,6 +305,7 @@ namespace KLTN.Game.Presentation
             }
 
             view.BindFaceUp(dto, FindArtwork(dto.definitionId));
+            view.SetOwnerPerspective(isOpponent);
             DraggableHandCard draggable = view.GetComponent<DraggableHandCard>();
 
             if (draggable != null)
@@ -357,6 +364,183 @@ namespace KLTN.Game.Presentation
             return faceUpViewsById.TryGetValue(instanceId, out view) && view != null;
         }
 
+        /// <summary>
+        /// Makes a freshly summoned source visible before the final snapshot replaces
+        /// the previous hand view. Existing card instances keep their visual identity.
+        /// </summary>
+        public NetworkCardVisual PrepareAbilitySource(
+            CardViewDto card,
+            int ownerSeat,
+            int viewerSeat,
+            int zone,
+            bool centerNewSource = false
+        )
+        {
+            if (card == null || string.IsNullOrWhiteSpace(card.instanceId))
+            {
+                return null;
+            }
+
+            if (TryGetFaceUpVisual(card.instanceId, out NetworkCardVisual existing))
+            {
+                // Keep a pending Play source in the centre for its entire host-confirmed
+                // ability sequence. The next snapshot moves it to Reserve afterward.
+                if (
+                    abilitySelectionSourceRoot != null
+                    && existing.transform.parent == abilitySelectionSourceRoot
+                )
+                {
+                    existing.SetPending(false);
+                    existing.SetInteractableVisual(true);
+                    return existing;
+                }
+
+                RectTransform destination = FindAbilityCardParent(
+                    card,
+                    ownerSeat,
+                    viewerSeat,
+                    zone
+                );
+
+                if (destination != null && existing.transform.parent != destination)
+                {
+                    existing.transform.SetParent(destination, false);
+
+                    CardVisualLayout layout = existing.GetComponent<CardVisualLayout>();
+
+                    if (layout != null)
+                    {
+                        layout.Apply(
+                            zone == (int)CardZone.Board
+                                ? CardVisualLocation.Board
+                                : CardVisualLocation.Reserve
+                        );
+                    }
+
+                    DraggableHandCard draggable = existing.GetComponent<DraggableHandCard>();
+
+                    if (draggable != null)
+                    {
+                        draggable.Configure(
+                            false,
+                            dragLayer,
+                            zone == (int)CardZone.Board
+                                ? CardVisualLocation.Board
+                                : CardVisualLocation.Reserve
+                        );
+                    }
+
+                    existing.SetPending(false);
+                    existing.SetInteractableVisual(true);
+                }
+
+                return existing;
+            }
+
+            bool placeAtCenter = centerNewSource
+                && zone == (int)CardZone.Reserve
+                && abilitySelectionSourceRoot != null;
+            RectTransform parent = placeAtCenter
+                ? abilitySelectionSourceRoot
+                : FindAbilityCardParent(card, ownerSeat, viewerSeat, zone);
+
+            if (parent == null)
+            {
+                return null;
+            }
+
+            CardVisualLocation location = placeAtCenter
+                ? CardVisualLocation.AbilitySelection
+                : zone == (int)CardZone.Board
+                    ? CardVisualLocation.Board
+                    : CardVisualLocation.Reserve;
+
+            if (ownerSeat != viewerSeat && zone == (int)CardZone.Reserve)
+            {
+                RemoveOneOpponentHandBack();
+            }
+
+            NetworkCardVisual prepared = CreateFaceUpCard(
+                card,
+                parent,
+                false,
+                location,
+                ownerSeat != viewerSeat
+            );
+
+            if (placeAtCenter)
+            {
+                CenterAbilitySelectionSource(prepared);
+                prepared.SetPending(false);
+            }
+
+            prepared.SetInteractableVisual(true);
+            return prepared;
+        }
+
+        /// <summary>
+        /// Creates a new reserve view even when an earlier view of the same card has
+        /// just shattered. The old view stays intact until this update finishes.
+        /// </summary>
+        public NetworkCardVisual PrepareRevivedCard(
+            CardViewDto card,
+            int ownerSeat,
+            int viewerSeat,
+            bool reserveCanDrag
+        )
+        {
+            if (card == null || string.IsNullOrWhiteSpace(card.instanceId))
+            {
+                return null;
+            }
+
+            RectTransform parent = ownerSeat == viewerSeat
+                ? selfReserveRoot
+                : opponentReserveRoot;
+
+            if (parent == null)
+            {
+                return null;
+            }
+
+            NetworkCardVisual revived = CreateFaceUpCard(
+                card,
+                parent,
+                ownerSeat == viewerSeat && reserveCanDrag,
+                CardVisualLocation.Reserve,
+                ownerSeat != viewerSeat
+            );
+            return revived;
+        }
+
+        private RectTransform FindAbilityCardParent(
+            CardViewDto card,
+            int ownerSeat,
+            int viewerSeat,
+            int zone
+        )
+        {
+            bool isSelf = ownerSeat == viewerSeat;
+
+            if (zone == (int)CardZone.Reserve)
+            {
+                return isSelf ? selfReserveRoot : opponentReserveRoot;
+            }
+
+            if (zone != (int)CardZone.Board)
+            {
+                return null;
+            }
+
+            RectTransform[] slots = isSelf ? selfBoardSlots : opponentBoardSlots;
+
+            return slots != null
+                && card.boardSlotIndex >= 0
+                && card.boardSlotIndex < slots.Length
+                ? slots[card.boardSlotIndex]
+                : null;
+        }
+
         public void ClearAbilityTargetVisuals()
         {
             foreach (NetworkCardVisual view in faceUpViewsById.Values)
@@ -412,7 +596,8 @@ namespace KLTN.Game.Presentation
                     card,
                     targetSlots[slotIndex],
                     false,
-                    CardVisualLocation.Board
+                    CardVisualLocation.Board,
+                    !isSelfCard
                 );
             }
             else

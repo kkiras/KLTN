@@ -42,6 +42,9 @@ namespace KLTN.Game.Domain
         public MatchOutcome Outcome { get; set; } = MatchOutcome.Running;
         public string LastEvent { get; set; } = "Đang chờ đối thủ đổi bài (Mulligan)...";
         public bool IsFinished => Outcome != MatchOutcome.Running;
+
+        /// <summary>Seat that surrendered, or null when the match did not end by surrender.</summary>
+        public SeatId? SurrenderedSeat { get; set; }
         private ulong nextAbilitySelectionRequestId = 1;
         private ulong nextGeneratedCardInstanceId = 1;
         private long nextAbilityResolutionSequence = 1;

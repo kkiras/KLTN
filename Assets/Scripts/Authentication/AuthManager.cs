@@ -87,6 +87,66 @@ public class AuthManager : MonoBehaviour
 
     #endregion
 
+    #region Session Access
+
+    private static readonly TimeSpan TokenRefreshMargin = TimeSpan.FromMinutes(5);
+    private Task<AuthResultData> pendingTokenRefresh;
+
+    /// <summary>Firebase UID of the signed-in player, or null.</summary>
+    public string CurrentUserId => authService != null && authService.IsLoggedIn ? authService.UserId : null;
+
+    /// <summary>
+    /// Returns a Firebase ID token valid for at least a few more minutes,
+    /// refreshing it through the secure token endpoint when needed.
+    /// Returns null when no player is signed in or the refresh fails.
+    /// </summary>
+    public async Task<string> GetValidIdTokenAsync()
+    {
+        if (authService == null || !authService.IsLoggedIn)
+        {
+            return null;
+        }
+
+        if (DateTime.UtcNow + TokenRefreshMargin < authService.IdTokenExpiresAtUtc)
+        {
+            return authService.IdToken;
+        }
+
+        if (string.IsNullOrEmpty(authService.RefreshToken))
+        {
+            Debug.LogWarning("[Auth] ID token is about to expire and no refresh token is available.");
+            return authService.IdToken;
+        }
+
+        // Share one in-flight refresh between concurrent callers.
+        pendingTokenRefresh ??= authService.LoginWithRefreshTokenAsync(authService.RefreshToken);
+
+        try
+        {
+            AuthResultData result = await pendingTokenRefresh;
+
+            if (!result.Success)
+            {
+                Debug.LogWarning($"[Auth] ID token refresh failed: {result.ErrorMessage}");
+                return null;
+            }
+
+            if (PlayerPrefs.GetString(PREF_LOGIN_METHOD, "") == "email" && !string.IsNullOrEmpty(result.RefreshToken))
+            {
+                PlayerPrefs.SetString(PREF_FIREBASE_REFRESH_TOKEN, result.RefreshToken);
+                PlayerPrefs.Save();
+            }
+
+            return result.IdToken;
+        }
+        finally
+        {
+            pendingTokenRefresh = null;
+        }
+    }
+
+    #endregion
+
     #region Authentication Commands
 
     public async Task<AuthResultData> ProcessRegister(string email, string password)

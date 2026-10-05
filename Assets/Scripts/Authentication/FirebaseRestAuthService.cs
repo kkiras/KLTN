@@ -25,6 +25,7 @@ public class FirebaseRestAuthService : IAuthService
     private string email;
     private string idToken;
     private string refreshToken;
+    private DateTime idTokenExpiresAtUtc = DateTime.MinValue;
 
     #endregion
 
@@ -44,6 +45,7 @@ public class FirebaseRestAuthService : IAuthService
     public string Email => email;
     public string IdToken => idToken;
     public string RefreshToken => refreshToken;
+    public DateTime IdTokenExpiresAtUtc => idTokenExpiresAtUtc;
 
     #endregion
 
@@ -221,6 +223,7 @@ public class FirebaseRestAuthService : IAuthService
                 this.idToken = response.id_token;
                 this.refreshToken = response.refresh_token;
                 this.userId = response.user_id;
+                this.idTokenExpiresAtUtc = ComputeExpiry(response.expires_in);
 
                 return new AuthResultData
                 {
@@ -249,6 +252,7 @@ public class FirebaseRestAuthService : IAuthService
         email = null;
         idToken = null;
         refreshToken = null;
+        idTokenExpiresAtUtc = DateTime.MinValue;
         Debug.Log("Firebase logout successful.");
     }
 
@@ -306,6 +310,14 @@ public class FirebaseRestAuthService : IAuthService
         email = response.email;
         idToken = response.idToken;
         refreshToken = response.refreshToken;
+        idTokenExpiresAtUtc = ComputeExpiry(response.expiresIn);
+    }
+
+    private static DateTime ComputeExpiry(string expiresInSeconds)
+    {
+        // Firebase ID tokens live 3600 s. Fall back to that when the field is missing.
+        int seconds = int.TryParse(expiresInSeconds, out int parsed) && parsed > 0 ? parsed : 3600;
+        return DateTime.UtcNow.AddSeconds(seconds);
     }
 
     #endregion

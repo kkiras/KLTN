@@ -19,7 +19,6 @@ namespace KLTN.Game.Networking
     {
         #region Constants
 
-        private const int DeckSize = 20;
         private const int OpeningHandSize = 4;
         private const int SnapshotRequestAttempts = 10;
         private const float SnapshotRequestIntervalSeconds = 0.5f;
@@ -67,6 +66,12 @@ namespace KLTN.Game.Networking
                 BroadcastUpdate();
             }
 
+            if (IsClient)
+            {
+                // Host (server + client) and remote clients both report their owned cards.
+                SubmitLocalLoadout();
+            }
+
             if (IsClient && !IsServer)
             {
                 initialSnapshotCoroutine = StartCoroutine(RequestInitialSnapshot());
@@ -95,6 +100,7 @@ namespace KLTN.Game.Networking
             }
 
             pendingSnapshotClients.Clear();
+            ResetLoadouts();
             MatchProjectionRegistry.Current.Reset();
             MatchUpdateInboxRegistry.Current.Reset();
         }

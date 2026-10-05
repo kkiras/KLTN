@@ -8,6 +8,7 @@ public static class SceneNames
     public const string HostClientMenu = "HostClientMenu";
     public const string ServerBootstrap = "ServerBootstrap";
     public const string GameScene = "GameScene";
+    public const string Shop = "ShopScene";
 
     #endregion
 }

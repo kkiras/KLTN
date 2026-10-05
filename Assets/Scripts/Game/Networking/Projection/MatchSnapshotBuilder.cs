@@ -92,6 +92,7 @@ namespace KLTN.Game.Networking
                 consecutivePasses = state.ConsecutivePasses,
 
                 outcome = (int)state.Outcome,
+                surrenderedSeat = state.SurrenderedSeat.HasValue ? (int)state.SurrenderedSeat.Value : -1,
                 viewerCanAct = viewerCanAct,
 
                 viewerCanEndRound = viewerCanAct && state.CanEndRound,

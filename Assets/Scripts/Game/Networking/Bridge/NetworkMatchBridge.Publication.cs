@@ -25,6 +25,11 @@ namespace KLTN.Game.Networking
                 return false;
             }
 
+            if (!AreLoadoutsReady())
+            {
+                return false;
+            }
+
             Card[] cardAssets = Resources.LoadAll<Card>("Cards");
 
             if (cardAssets == null || cardAssets.Length == 0)
@@ -67,9 +72,8 @@ namespace KLTN.Game.Networking
                     (left, right) => StringComparer.Ordinal.Compare(left.Id, right.Id)
                 );
 
-                IReadOnlyList<CardDefinition> defaultDeck = DefaultDeckBuilder.Build(
-                    definitions
-                );
+                IReadOnlyList<CardDefinition> hostDeck = BuildDeckForSeat(SeatId.Host);
+                IReadOnlyList<CardDefinition> guestDeck = BuildDeckForSeat(SeatId.Guest);
 
                 IRandomSource random = new SeededRandomSource(Environment.TickCount);
 
@@ -78,11 +82,13 @@ namespace KLTN.Game.Networking
                 var factory = new MatchFactory(random);
 
                 matchState = factory.Create(
-                    defaultDeck,
-                    defaultDeck,
+                    hostDeck,
+                    guestDeck,
                     OpeningHandSize,
                     firstSeat
                 );
+
+                currentMatchId = Guid.NewGuid().ToString("N");
 
                 rulesEngine = new MatchRulesEngine(definitionsById, random);
 
@@ -92,6 +98,7 @@ namespace KLTN.Game.Networking
 
                 Debug.Log(
                     $"Match initialized. "
+                        + $"MatchId: {currentMatchId}. "
                         + $"First seat: {matchState.FirstSeat}. "
                         + $"Deck size: {DeckRules.RequiredCardCount}. "
                         + $"Host hand: {matchState.Host.DrawHand.Count}, "
@@ -224,12 +231,15 @@ namespace KLTN.Game.Networking
                 );
             }
 
-            return snapshotBuilder.Build(
+            MatchSnapshotDto snapshot = snapshotBuilder.Build(
                 matchState,
                 viewerSeat,
                 opponentConnected,
                 revision
             );
+
+            snapshot.matchId = currentMatchId;
+            return snapshot;
         }
 
         [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]

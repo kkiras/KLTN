@@ -218,12 +218,12 @@ namespace KLTN.Game.Presentation
             PlaySlide(hostAnimator);
             PlaySlide(guestAnimator);
 
-            PlayAttackSfx();
-
             yield return RunTogether(
                 hostAnimator.Strike(hostTarget, strikeDuration),
                 guestAnimator.Strike(guestTarget, strikeDuration)
             );
+
+            PlayAttackSfx();
 
             if (vfxPresenter != null)
             {
@@ -292,9 +292,9 @@ namespace KLTN.Game.Presentation
             BeginFeedback(targetFeedback);
             PlaySlide(attackerAnimator);
 
-            PlayAttackSfx();
-
             yield return attackerAnimator.Strike(attackPosition, strikeDuration);
+
+            PlayAttackSfx();
 
             if (vfxPresenter != null)
             {

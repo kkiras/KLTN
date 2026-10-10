@@ -68,7 +68,7 @@ namespace KLTN.Game.Domain.Tests
                 }
             }
 
-            Assert.AreEqual(20, deck.Count);
+            Assert.AreEqual(DeckRules.RequiredCardCount, deck.Count);
             Assert.AreEqual(1, amBinhCount);
         }
 

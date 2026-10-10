@@ -26,6 +26,16 @@ public sealed class MainMenuController : MonoBehaviour
         SceneManager.LoadScene(SceneNames.HostClientMenu);
     }
 
+    public void OpenShop()
+    {
+        if (!EnsureSignedIn())
+        {
+            return;
+        }
+
+        SceneManager.LoadScene(SceneNames.Shop);
+    }
+
     public void Logout()
     {
         AuthManager.Instance?.SignOut();

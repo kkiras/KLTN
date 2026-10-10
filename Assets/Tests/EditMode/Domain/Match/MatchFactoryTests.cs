@@ -20,8 +20,8 @@ namespace KLTN.Game.Domain.Tests
             Assert.AreEqual(4, state.Host.DrawHand.Count);
             Assert.AreEqual(4, state.Guest.DrawHand.Count);
 
-            Assert.AreEqual(16, state.Host.Deck.Count);
-            Assert.AreEqual(16, state.Guest.Deck.Count);
+            Assert.AreEqual(DeckRules.RequiredCardCount - 4, state.Host.Deck.Count);
+            Assert.AreEqual(DeckRules.RequiredCardCount - 4, state.Guest.Deck.Count);
         }
 
         [Test]
@@ -38,7 +38,7 @@ namespace KLTN.Game.Domain.Tests
             AddPlayerCards(state.Host, ids);
             AddPlayerCards(state.Guest, ids);
 
-            Assert.AreEqual(40, ids.Count);
+            Assert.AreEqual(DeckRules.RequiredCardCount * 2, ids.Count);
         }
 
         [Test]

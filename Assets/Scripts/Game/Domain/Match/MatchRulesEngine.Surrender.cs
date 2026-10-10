@@ -41,6 +41,7 @@ namespace KLTN.Game.Domain
                 state.Outcome = MatchOutcome.HostWon;
             }
 
+            state.SurrenderedSeat = actor;
             state.Phase = MatchPhase.Finished;
             state.ConsecutivePasses = 0;
 

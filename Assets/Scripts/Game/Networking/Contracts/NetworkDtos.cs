@@ -111,6 +111,11 @@ namespace KLTN.Game.Networking
         public int consecutivePasses;
 
         public int outcome;
+
+        // Economy: stable ID for reward idempotency, and who surrendered (-1 = nobody).
+        public string matchId;
+        public int surrenderedSeat = -1;
+
         public bool viewerCanAct;
         public bool viewerCanEndRound;
         public bool viewerCanDeclareAttack;

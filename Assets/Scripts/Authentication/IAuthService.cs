@@ -19,6 +19,7 @@ public interface IAuthService
     string Email { get; }
     string IdToken { get; }
     string RefreshToken { get; }
+    System.DateTime IdTokenExpiresAtUtc { get; }
 
     #endregion
 }

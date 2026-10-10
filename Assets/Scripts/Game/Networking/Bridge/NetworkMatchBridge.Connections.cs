@@ -32,10 +32,15 @@ namespace KLTN.Game.Networking
                 return;
             }
 
-            if (!seatByClient.Remove(clientId))
+            if (!seatByClient.TryGetValue(clientId, out SeatId leavingSeat))
             {
                 return;
             }
+
+            seatByClient.Remove(clientId);
+            loadoutBySeat.Remove(leavingSeat);
+            currentMatchId = null;
+            loadoutTimeoutElapsed = false;
             lastCommandIdByClient.Remove(clientId);
             Debug.Log($"Removed seat assignment for client {clientId}.");
             matchState = null;

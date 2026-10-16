@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLTN.Game.Domain.Economy;
+using KLTN.Game.Domain.Ranking;
 using KLTN.Infrastructure.Firestore;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
@@ -11,7 +12,8 @@ namespace KLTN.Infrastructure.Economy
     /// <summary>
     /// Firestore layout:
     ///   users/{uid}                         coins, silver, schemaVersion, createdAt, updatedAt,
-    ///                                       lastPurchase, lastRewardMatchId
+    ///                                       lastPurchase, lastRewardMatchId, username
+    ///   usernames/{username}                uid, createdAt   (uniqueness key, create-only)
     ///   users/{uid}/ownedCards/{cardId}     acquiredAt, source
     ///   users/{uid}/matchRewards/{matchId}  result, coins, silver, createdAt
     /// Every write is one :commit batch so Security Rules can validate it with getAfter().
@@ -19,6 +21,7 @@ namespace KLTN.Infrastructure.Economy
     public sealed class FirestoreEconomyGateway : IEconomyGateway
     {
         private const int SchemaVersion = 1;
+        private const int MaxUsernameAttempts = 5;
 
         private readonly FirestoreRestClient client;
         private readonly Func<string> userIdProvider;
@@ -171,41 +174,134 @@ namespace KLTN.Infrastructure.Economy
 
         private async Task<EconomyResult> CreateProfileAsync(string uid, string token, IReadOnlyList<string> starterCardIds)
         {
-            var writes = new List<JObject>
-            {
-                client.CreateWrite(
-                    UserPath(uid),
-                    new Dictionary<string, object>
-                    {
-                        ["coins"] = 0,
-                        ["silver"] = 0,
-                        ["schemaVersion"] = SchemaVersion,
-                    },
-                    "createdAt",
-                    "updatedAt"
-                ),
-            };
+            FirestoreResponse response = null;
 
-            foreach (string cardId in starterCardIds)
+            for (int attempt = 0; attempt < MaxUsernameAttempts; attempt++)
             {
-                writes.Add(
+                string username = NewUsername();
+                var writes = new List<JObject>
+                {
                     client.CreateWrite(
-                        $"{UserPath(uid)}/ownedCards/{cardId}",
-                        new Dictionary<string, object> { ["source"] = "starter" },
-                        "acquiredAt"
-                    )
-                );
-            }
+                        UserPath(uid),
+                        new Dictionary<string, object>
+                        {
+                            ["coins"] = 0,
+                            ["silver"] = 0,
+                            ["schemaVersion"] = SchemaVersion,
+                            ["username"] = username,
+                        },
+                        "createdAt",
+                        "updatedAt"
+                    ),
+                    UsernameWrite(username, uid),
+                };
 
-            FirestoreResponse response = await client.CommitAsync(writes, token);
+                foreach (string cardId in starterCardIds)
+                {
+                    writes.Add(
+                        client.CreateWrite(
+                            $"{UserPath(uid)}/ownedCards/{cardId}",
+                            new Dictionary<string, object> { ["source"] = "starter" },
+                            "acquiredAt"
+                        )
+                    );
+                }
 
-            if (response.Success)
-            {
-                Debug.Log($"[Economy] Created profile for {uid} with {starterCardIds.Count} starter cards.");
-                return EconomyResult.Ok(null);
+                response = await client.CommitAsync(writes, token);
+
+                if (response.Success)
+                {
+                    Debug.Log($"[Economy] Created profile for {uid} ({username}) with {starterCardIds.Count} starter cards.");
+                    return EconomyResult.Ok(null);
+                }
+
+                if (!IsConflict(response))
+                {
+                    return Map(response);
+                }
+
+                // Conflict: either another device created the profile first, or the name is taken.
+                FirestoreResponse user = await client.GetDocumentAsync(UserPath(uid), token);
+
+                if (user.Success)
+                {
+                    return EconomyResult.Fail(EconomyErrorCode.Rejected, "Hồ sơ đã được tạo ở thiết bị khác.");
+                }
+
+                Debug.Log($"[Economy] Username {username} unavailable, retrying.");
             }
 
             return Map(response);
+        }
+
+        /// <summary>
+        /// Gives an account created before usernames existed its unique name (lazy backfill on login).
+        /// Returns null when every attempt failed; the profile still loads without one.
+        /// </summary>
+        private async Task<string> ClaimUsernameAsync(string uid, string token)
+        {
+            for (int attempt = 0; attempt < MaxUsernameAttempts; attempt++)
+            {
+                string username = NewUsername();
+                var writes = new List<JObject>
+                {
+                    client.UpdateWrite(
+                        UserPath(uid),
+                        new Dictionary<string, object> { ["username"] = username },
+                        null,
+                        "updatedAt"
+                    ),
+                    UsernameWrite(username, uid),
+                };
+
+                FirestoreResponse response = await client.CommitAsync(writes, token);
+
+                if (response.Success)
+                {
+                    Debug.Log($"[Economy] Assigned username {username} to {uid}.");
+                    return username;
+                }
+
+                if (!IsConflict(response))
+                {
+                    Debug.LogWarning($"[Economy] Username claim failed: {response.ErrorStatus} {response.ErrorMessage}");
+                    return null;
+                }
+
+                // Another device may have claimed one in the meantime.
+                FirestoreResponse user = await client.GetDocumentAsync(UserPath(uid), token);
+                string existing = FirestoreValueMapper.GetString(user.Body, "username");
+
+                if (!string.IsNullOrEmpty(existing))
+                {
+                    return existing;
+                }
+            }
+
+            return null;
+        }
+
+        private JObject UsernameWrite(string username, string uid)
+        {
+            return client.CreateWrite(
+                $"usernames/{username}",
+                new Dictionary<string, object> { ["uid"] = uid },
+                "createdAt"
+            );
+        }
+
+        private static string NewUsername()
+        {
+            int number = System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, UsernamePolicy.MaxNumber + 1);
+            return UsernamePolicy.Format(number);
+        }
+
+        /// <summary>A create precondition failed (document exists) or Rules saw the existing doc.</summary>
+        private static bool IsConflict(FirestoreResponse response)
+        {
+            return response.ErrorStatus == "ALREADY_EXISTS"
+                || response.ErrorStatus == "FAILED_PRECONDITION"
+                || response.ErrorStatus == "PERMISSION_DENIED";
         }
 
         private async Task<EconomyResult> ReadProfileAsync(string uid, string token)
@@ -242,7 +338,14 @@ namespace KLTN.Infrastructure.Economy
                 (int)FirestoreValueMapper.GetInteger(user.Body, "silver")
             );
 
-            return EconomyResult.Ok(new PlayerProfile(uid, wallet, owned));
+            string username = FirestoreValueMapper.GetString(user.Body, "username");
+
+            if (string.IsNullOrEmpty(username))
+            {
+                username = await ClaimUsernameAsync(uid, token);
+            }
+
+            return EconomyResult.Ok(new PlayerProfile(uid, username, wallet, owned));
         }
 
         private async Task<(string uid, string token, EconomyResult error)> SessionAsync()

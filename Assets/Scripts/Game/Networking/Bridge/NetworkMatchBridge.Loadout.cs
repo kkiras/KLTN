@@ -28,6 +28,8 @@ namespace KLTN.Game.Networking
         private Coroutine loadoutTimeoutCoroutine;
         private bool loadoutTimeoutElapsed;
         private string currentMatchId;
+        private bool currentMatchRanked;
+        private long currentMatchStartedUtcMs;
         private ShopCatalog shopCatalog;
 
         #endregion

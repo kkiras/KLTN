@@ -2,7 +2,7 @@
 
 > Mục đích: bộ nhớ dài hạn cho agent/người mới — **đã chọn gì, vì sao, giới hạn ở đâu**.
 > Khác với `rules/` (quy tắc phải làm theo), file này ghi **quyết định và hiện trạng**.
-> Cập nhật khi một quyết định kiến trúc thay đổi. Lần cuối: 05/10/2026 (Shop + kinh tế + Firestore).
+> Cập nhật khi một quyết định kiến trúc thay đổi. Lần cuối: 16/10/2026 (Leaderboard theo mùa).
 > Nhãn: `[Đã kiểm chứng trong code]`, `[Chưa kiểm chứng]` (cần xác minh ngoài repo, VD dashboard UGS/Edgegap).
 
 ---
@@ -193,3 +193,44 @@ server xác minh ownedCards bằng token người chơi. Client không đổi nh
 cuộn chỉ bằng con lăn (`ShopScrollRect`: không kéo, clamped, không quán tính), overlay tối khi hover/đã sở hữu,
 nút Mua đỏ chữ vàng có `HoverScale` 1.0→1.2, modal `ShopConfirmDialog` "Bạn có đồng ý mua thẻ {tên} không?".
 7 chế độ: Bạc ↑/↓, Xu ↑/↓, Chỉ bạc, Chỉ xu, Chỉ thẻ chưa có (`ShopListQuery`).
+
+## 12. Leaderboard theo mùa + điểm rank (16/10/2026)
+
+`[Đã kiểm chứng ngoài Unity]` — Domain 48 test pass (.NET 8), Rules 35 case pass trên Firestore emulator,
+Cloud Code 8 kiểm tra pass trên emulator, Assembly-CSharp + Editor compile được với DLL tham chiếu
+Unity 2021/2021.1 (không phải 6000.5 — vẫn phải compile lại trong Unity). `[Chưa kiểm chứng]` deploy UGS thật.
+
+**Luật (đã duyệt)** — Thắng +30, Thua −20, Hòa 0, Đầu hàng −20, điểm không âm, không bảo hộ rớt hạng, không Elo.
+Ngưỡng: Đồng 0, Bạc 60, Vàng 150, Bạch kim 270, Kim cương 420, Cao thủ 600, Thách đấu 800 (cố định).
+Rank luôn **tính từ điểm** (`RankPolicy.TierFor`), không lưu. Chống farm: ≥ 60s giữa hai kết quả của cùng người.
+
+**Mùa** — mặc định 24h, khóa điểm 30 phút trước reset (`RankingSettings`: `seasonDurationHours`, `pointsLockMinutes`).
+Trận được tính khi **bắt đầu** trong `[startAt, lockAt)` và kết quả **ghi trước** `endAt`. Trận bắt đầu trước giờ khóa
+nhưng kéo dài quá giờ reset → không tính. Giờ dùng `ServerClock` (header `Date` của Firestore), không dùng đồng hồ máy.
+Mùa mới = bảng mới (partition theo `seasons/{id}`), mùa cũ giữ nguyên để xem lại.
+**Mùa tính theo đồng hồ** (`SeasonCalendar`): mùa k bắt đầu `anchorStart + (k − anchorId) × duration`, căn 00:00 giờ VN.
+Lý do: UGS Scheduler tối thiểu **1 giờ/lần** → nếu reset phụ thuộc tick thì mất tới ~1h không tính điểm mỗi ngày.
+Tick chỉ ghi lịch (đổi cài đặt = lịch `pending` áp dụng từ mùa sau) và doc lịch sử `seasons/{id}`.
+
+**Firestore**
+```text
+config/season                         anchorSeasonId, anchorStartMs, durationMs, lockMs, pending* (chỉ Cloud Code ghi)
+seasons/{id}                          seasonId, startAt, endAt, lockAt, closedAt? (lịch sử cho sidebar)
+seasons/{id}/entries/{uid}            username, points, wins, losses, draws, matches, lastResultAt, createdAt
+seasons/{id}/entries/{uid}/results/{matchId}  result, delta, matchStartedAt, createdAt (chống ghi trùng)
+usernames/{name}                      uid  (đảm bảo username duy nhất)
+users/{uid}.username                  "user" + 6 số ngẫu nhiên; user cũ được cấp lúc đăng nhập
+```
+Thứ tự: points DESC → winRate DESC → username ASC. `winRate` = wins*10000/matches (làm tròn xuống), LƯU trong Firestore (user quyết định 17/10 sau khi thử bỏ: không lưu thì phải đọc toàn bộ mùa để sort), Rules kiểm tra. Index: `entries` (points DESC, winRate DESC, username ASC), (points ASC, winRate ASC), (points ASC, winRate ASC, username ASC).
+Mọi tài khoản luôn có hàng: đăng nhập/mở bảng xếp hạng tự tạo hàng trống (0 điểm = Đồng, 0 %); Cloud Code mỗi giờ tạo hàng trống cho mọi `users/*` và cấp username cho tài khoản cũ chưa có.
+
+**Xếp hạng trận** — dedicated: luôn tính. Host/Client: tính khi `RankingSettings.HostClientPointsEnabled` (mặc định bật
+để test). Matchmaker: ticket gửi `rank_tier`, rule Dashboard Difference ≤ 1. Host/Client không giới hạn rank.
+
+**UI** — `LeaderboardScene` (builder sinh): sidebar các mùa, tiêu đề "BẢNG XẾP HẠNG — MÙA N", đồng hồ đếm ngược,
+cột STT | Username | Rank | Điểm | Tỉ lệ thắng, top 1–3 màu vàng/bạc/đồng, dòng của mình vàng nhạt.
+Dòng ghim: khi dòng mình nằm ngoài vùng nhìn thấy thì ghim ở đáy; cuộn tới STT đó thì dòng ghim ẩn và dòng thật hiện
+(chiều cao dòng cố định 76 + 6 → tính vị trí O(1), không cần đo layout).
+
+**Giai đoạn 2** — server (dedicated) ghi kết quả qua Cloud Code, Rules đổi `entries` write → false; `rank_tier` lấy từ
+server thay vì client khai.

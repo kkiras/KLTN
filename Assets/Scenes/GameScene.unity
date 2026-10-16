@@ -9049,7 +9049,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MatchResultPresenter
   resultPanel: {fileID: 5204224027935128023}
   resultTitleText: {fileID: 3970181359267165096}
-  rewardText: {fileID: 0}
+  rewardText: {fileID: 191257760}
 --- !u!1 &1607381320
 GameObject:
   m_ObjectHideFlags: 0

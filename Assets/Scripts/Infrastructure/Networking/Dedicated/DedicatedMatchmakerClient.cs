@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using KLTN.Game.Domain.Ranking;
+using KLTN.Infrastructure.Ranking;
 using TMPro;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
@@ -17,6 +19,10 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
     #region Constants
 
     private const int PollDelayMilliseconds = 1500;
+
+    // Matchmaker queue rule (Dashboard): Difference on Players.CustomData.rank_tier <= 1.
+    private const string RankTierKey = "rank_tier";
+    private const int RankLookupTimeoutMilliseconds = 5000;
 
     #endregion
 
@@ -174,7 +180,13 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
         {
             string publicIp = await PublicIpResolver.ResolveAsync(cancellationToken);
 
-            var customData = new Dictionary<string, object> { ["player_ip"] = publicIp };
+            RankTier rankTier = await ResolveRankTierAsync();
+            var customData = new Dictionary<string, object>
+            {
+                ["player_ip"] = publicIp,
+                [RankTierKey] = (int)rankTier,
+            };
+            Debug.Log($"[Matchmaker] Ticket rank_tier={(int)rankTier} ({rankTier}).");
 
             var players = new List<Player>
             {
@@ -220,6 +232,32 @@ public sealed class DedicatedMatchmakerClient : MonoBehaviour
                     matchmakingButton.interactable = true;
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Own tier in the running season for the ticket's rank_tier. Players who have not played
+    /// this season (or when the lookup fails or is slow) search as Bronze.
+    /// </summary>
+    private static async Task<RankTier> ResolveRankTierAsync()
+    {
+        LeaderboardService leaderboard = LeaderboardService.Instance;
+
+        if (leaderboard == null)
+        {
+            return RankTier.Bronze;
+        }
+
+        try
+        {
+            Task<RankTier> lookup = leaderboard.GetMyCurrentTierAsync();
+            Task finished = await Task.WhenAny(lookup, Task.Delay(RankLookupTimeoutMilliseconds));
+            return finished == lookup ? lookup.Result : leaderboard.MyStanding?.Tier ?? RankTier.Bronze;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[Matchmaker] Rank lookup failed, searching as Bronze: {exception.Message}");
+            return RankTier.Bronze;
         }
     }
 

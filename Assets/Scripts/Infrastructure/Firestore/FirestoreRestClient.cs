@@ -20,7 +20,30 @@ namespace KLTN.Infrastructure.Firestore
         public string ErrorMessage;
         public JObject Body;
 
+        /// <summary>Server time from the HTTP Date header (1 s resolution), if present.</summary>
+        public DateTimeOffset? ServerDate;
+
         public bool IsNotFound => StatusCode == 404;
+    }
+
+    /// <summary>
+    /// Client estimate of Google's clock, learned from Firestore response Date headers.
+    /// Used for season countdowns and the points lock so a wrong PC clock does not matter.
+    /// Security Rules still decide with request.time.
+    /// </summary>
+    public static class ServerClock
+    {
+        private static long offsetMs;
+
+        public static bool IsSynced { get; private set; }
+
+        public static long UtcNowMs => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + offsetMs;
+
+        public static void Observe(DateTimeOffset serverDate)
+        {
+            offsetMs = serverDate.ToUnixTimeMilliseconds() - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            IsSynced = true;
+        }
     }
 
     /// <summary>
@@ -33,6 +56,9 @@ namespace KLTN.Infrastructure.Firestore
         private const string FallbackProjectId = "unity-kltn";
         private const string ConfigFileName = "google-services-desktop.json";
         private const string Host = "https://firestore.googleapis.com/v1/";
+
+        // runQuery / runAggregationQuery answer with a JSON array; it is wrapped under this key.
+        private const string ArrayResultsKey = "results";
 
         public string ProjectId { get; }
         public string DatabaseRoot { get; }
@@ -94,6 +120,88 @@ namespace KLTN.Infrastructure.Firestore
             while (!string.IsNullOrEmpty(pageToken));
 
             return (new FirestoreResponse { Success = true, StatusCode = 200 }, documents);
+        }
+
+        /// <summary>
+        /// Runs a structured query against a collection under <paramref name="parentPath"/>
+        /// ("" for root collections). Returns the matched documents in query order.
+        /// </summary>
+        public async Task<(FirestoreResponse response, List<JObject> documents)> RunQueryAsync(
+            string parentPath,
+            JObject structuredQuery,
+            string idToken
+        )
+        {
+            var documents = new List<JObject>();
+            var body = new JObject { ["structuredQuery"] = structuredQuery };
+            FirestoreResponse response = await SendAsync(
+                UnityWebRequest.kHttpVerbPOST,
+                Host + ParentName(parentPath) + ":runQuery",
+                body.ToString(Formatting.None),
+                idToken
+            );
+
+            if (response.Success && response.Body?[ArrayResultsKey] is JArray rows)
+            {
+                foreach (JToken row in rows)
+                {
+                    if (row["document"] is JObject document)
+                    {
+                        documents.Add(document);
+                    }
+                }
+            }
+
+            return (response, documents);
+        }
+
+        /// <summary>COUNT() aggregation of a structured query; costs ~1 read per 1000 matches.</summary>
+        public async Task<(FirestoreResponse response, long count)> RunCountAsync(
+            string parentPath,
+            JObject structuredQuery,
+            string idToken
+        )
+        {
+            var body = new JObject
+            {
+                ["structuredAggregationQuery"] = new JObject
+                {
+                    ["structuredQuery"] = structuredQuery,
+                    ["aggregations"] = new JArray
+                    {
+                        new JObject { ["alias"] = "total", ["count"] = new JObject() },
+                    },
+                },
+            };
+
+            FirestoreResponse response = await SendAsync(
+                UnityWebRequest.kHttpVerbPOST,
+                Host + ParentName(parentPath) + ":runAggregationQuery",
+                body.ToString(Formatting.None),
+                idToken
+            );
+
+            long count = 0;
+
+            if (response.Success && response.Body?[ArrayResultsKey] is JArray rows)
+            {
+                foreach (JToken row in rows)
+                {
+                    JToken value = row["result"]?["aggregateFields"]?["total"]?["integerValue"];
+
+                    if (value != null && long.TryParse(value.ToString(), out long parsed))
+                    {
+                        count = parsed;
+                    }
+                }
+            }
+
+            return (response, count);
+        }
+
+        private string ParentName(string parentPath)
+        {
+            return string.IsNullOrEmpty(parentPath) ? DatabaseRoot : DocumentName(parentPath);
         }
 
         #endregion
@@ -253,13 +361,29 @@ namespace KLTN.Infrastructure.Firestore
                     Success = request.result == UnityWebRequest.Result.Success,
                 };
 
+                string date = request.GetResponseHeader("Date");
+
+                if (!string.IsNullOrEmpty(date)
+                    && DateTimeOffset.TryParse(
+                        date,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.AssumeUniversal,
+                        out DateTimeOffset serverDate))
+                {
+                    response.ServerDate = serverDate;
+                    ServerClock.Observe(serverDate);
+                }
+
                 string text = request.downloadHandler?.text;
 
                 if (!string.IsNullOrEmpty(text))
                 {
                     try
                     {
-                        response.Body = JObject.Parse(text);
+                        string trimmed = text.TrimStart();
+                        response.Body = trimmed.StartsWith("[", StringComparison.Ordinal)
+                            ? new JObject { [ArrayResultsKey] = JArray.Parse(trimmed) }
+                            : JObject.Parse(text);
                     }
                     catch (JsonException)
                     {
@@ -269,9 +393,11 @@ namespace KLTN.Infrastructure.Firestore
 
                 if (!response.Success)
                 {
-                    response.ErrorStatus = response.Body?["error"]?["status"]?.ToString()
+                    // runQuery reports errors inside its array: [{"error": {...}}].
+                    JToken error = response.Body?["error"] ?? response.Body?[ArrayResultsKey]?.First?["error"];
+                    response.ErrorStatus = error?["status"]?.ToString()
                         ?? (request.result == UnityWebRequest.Result.ConnectionError ? "NETWORK_ERROR" : "UNKNOWN");
-                    response.ErrorMessage = response.Body?["error"]?["message"]?.ToString() ?? request.error;
+                    response.ErrorMessage = error?["message"]?.ToString() ?? request.error;
 
                     if (!response.IsNotFound)
                     {

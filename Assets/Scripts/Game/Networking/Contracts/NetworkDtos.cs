@@ -116,6 +116,11 @@ namespace KLTN.Game.Networking
         public string matchId;
         public int surrenderedSeat = -1;
 
+        // Ranking: whether this match changes season points, and when the server started it
+        // (Unix ms, UTC) so clients can apply the end-of-season points lock.
+        public bool isRanked;
+        public long matchStartedUtcMs;
+
         public bool viewerCanAct;
         public bool viewerCanEndRound;
         public bool viewerCanDeclareAttack;

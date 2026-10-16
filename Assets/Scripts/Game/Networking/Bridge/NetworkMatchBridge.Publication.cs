@@ -89,6 +89,12 @@ namespace KLTN.Game.Networking
                 );
 
                 currentMatchId = Guid.NewGuid().ToString("N");
+                currentMatchStartedUtcMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+                // Dedicated (Find Random) matches are always ranked; Host/Client only when
+                // enabled on the host's RankingSettings (quick testing).
+                currentMatchRanked =
+                    !NetworkManager.IsHost || RankingSettings.Load().HostClientPointsEnabled;
 
                 rulesEngine = new MatchRulesEngine(definitionsById, random);
 
@@ -99,6 +105,7 @@ namespace KLTN.Game.Networking
                 Debug.Log(
                     $"Match initialized. "
                         + $"MatchId: {currentMatchId}. "
+                        + $"Ranked: {currentMatchRanked}. "
                         + $"First seat: {matchState.FirstSeat}. "
                         + $"Deck size: {DeckRules.RequiredCardCount}. "
                         + $"Host hand: {matchState.Host.DrawHand.Count}, "
@@ -239,6 +246,8 @@ namespace KLTN.Game.Networking
             );
 
             snapshot.matchId = currentMatchId;
+            snapshot.isRanked = currentMatchRanked;
+            snapshot.matchStartedUtcMs = currentMatchStartedUtcMs;
             return snapshot;
         }
 

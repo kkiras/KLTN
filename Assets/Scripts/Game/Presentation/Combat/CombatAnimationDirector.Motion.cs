@@ -223,6 +223,8 @@ namespace KLTN.Game.Presentation
                 guestAnimator.Strike(guestTarget, strikeDuration)
             );
 
+            PlayAttackSfx();
+
             if (vfxPresenter != null)
             {
                 Vector3 impactPosition = (hostTarget + guestTarget) * 0.5f;
@@ -291,6 +293,8 @@ namespace KLTN.Game.Presentation
             PlaySlide(attackerAnimator);
 
             yield return attackerAnimator.Strike(attackPosition, strikeDuration);
+
+            PlayAttackSfx();
 
             if (vfxPresenter != null)
             {

@@ -174,7 +174,7 @@ Matchmaker: ticket customData rank_tier → rule Difference ≤ 1 trên Dashboar
 | 8 | `Matchmaker.ccmr` trỏ đường dẫn tuyệt đối trong `Downloads` máy cá nhân | `Assets/CloudCode` |
 | 9 | Scene trùng `GameScene Test Skills Animation.unity` | `Assets/Scenes` |
 | 10 | Spell/stack/CounterSpell chưa triển khai (validator chủ động từ chối) | `EffectKind.CounterSpell` |
-| 11 | Dùng API obsolete `FindFirstObjectByType` (CS0618) | `UI/SurrenderUI.cs:24` |
+| 11 | ~~Dùng API obsolete `FindFirstObjectByType` (CS0618)~~ Đã sửa 18/10 → `FindAnyObjectByType` | `UI/SurrenderUI.cs:24` |
 | 12 | Kinh tế giai đoạn 1: client tự ghi tiền, Rules chặn sai giá/sai mức thưởng nhưng client sửa đổi vẫn bịa được `matchId` | `FirestoreEconomyGateway`, `firestore.rules` → giai đoạn 2: Cloud Code |
 | 13 | Server tin danh sách thẻ client gửi (chỉ lọc ID hợp lệ) | `NetworkMatchBridge.Loadout.cs` |
 | 14 | Rớt mạng giữa trận → trận bị hủy, không ai nhận thưởng | `NetworkMatchBridge.Connections.cs` |

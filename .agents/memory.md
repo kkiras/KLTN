@@ -142,7 +142,7 @@ Logout: xóa PlayerPrefs (login method, refresh token) → `IAuthService.Logout`
   API `InstanceID` obsolete gây **lỗi compile**; `FindFirstObjectByType`, `FindObjectOfType`, `FindObjectsSortMode` bị deprecate.
 - Thay thế đã chốt: `FindFirstObjectByType`/`FindObjectOfType` → `FindAnyObjectByType`; `FindObjectsByType(..., SortMode)` →
   `FindObjectsByType<T>()`/`(FindObjectsInactive)`; `GetInstanceID` → `GetEntityId`. Chi tiết: `rules/unity-api-compliance.md`.
-- Vi phạm còn lại: `UI/SurrenderUI.cs:24` (`FindFirstObjectByType`) — compiler đã báo CS0618.
+- Vi phạm còn lại: không. `UI/SurrenderUI.cs:24` đã đổi sang `FindAnyObjectByType` (18/10).
 
 ## 10. Case/bug đang theo dõi
 

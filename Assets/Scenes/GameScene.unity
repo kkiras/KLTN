@@ -1744,6 +1744,9 @@ MonoBehaviour:
   nexusHitPrefab: {fileID: 6927888912574776446, guid: 7021a87c7eee1db42a03e43ed83bdd01, type: 3}
   deathDustPrefab: {fileID: 1881139425499535096, guid: fc0c2982e37e6254090f475d911b5ff7, type: 3}
   slideEffectPrefab: {fileID: 383219524286715352, guid: 3c38c1a694146e140859277cacc85300, type: 3}
+  vongNhiSoulOrbPrefab: {fileID: 6124002764123634401, guid: 710bb91c0be3b1449b1ad5c76efbed35, type: 3}
+  vongNhiSoulBlastPrefab: {fileID: 4481839748510527902, guid: 4c2fd462041844645b93da0d96af25c3, type: 3}
+  vongNhiSoulOrbScale: 3
   cardHitScale: 2
   nexusHitScale: 1
   deathDustScale: 2.2

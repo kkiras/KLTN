@@ -1,0 +1,31 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "points", "order": "DESCENDING" },
+        { "fieldPath": "winRate", "order": "DESCENDING" },
+        { "fieldPath": "username", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "points", "order": "ASCENDING" },
+        { "fieldPath": "winRate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "points", "order": "ASCENDING" },
+        { "fieldPath": "winRate", "order": "ASCENDING" },
+        { "fieldPath": "username", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

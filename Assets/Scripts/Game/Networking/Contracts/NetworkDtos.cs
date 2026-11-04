@@ -116,6 +116,22 @@ namespace KLTN.Game.Networking
         public string matchId;
         public int surrenderedSeat = -1;
 
+        // Ranking: whether this match changes season points, and when the server started it
+        // (Unix ms, UTC) so clients can apply the end-of-season points lock.
+        public bool isRanked;
+        public long matchStartedUtcMs;
+
+        // FR-NET-04/06: SeatConnectionState of both seats (0 empty, 1 connected,
+        // 2 disconnected and held, 3 abandoned). Commands are refused while paused.
+        public int selfConnection;
+        public int opponentConnection;
+        public bool isPaused;
+
+        // How long the opponent's seat is still held: server clock deadline (Unix ms) and the
+        // remaining time when the snapshot was built, which clients count down locally.
+        public long opponentReconnectDeadlineUtcMs;
+        public long opponentReconnectRemainingMs;
+
         public bool viewerCanAct;
         public bool viewerCanEndRound;
         public bool viewerCanDeclareAttack;
@@ -223,6 +239,44 @@ namespace KLTN.Game.Networking
     public sealed class AbilityResolutionDto
     {
         public AbilityResolutionEventDto[] events;
+    }
+
+    public enum MatchSettlementState
+    {
+        // Dedicated server is reporting the result to the backend.
+        Saving = 0,
+        Saved = 1,
+        Failed = 2,
+
+        // Listen-host (Host/Join): no rewards or season points.
+        PrivateMatch = 3,
+    }
+
+    /// <summary>
+    /// Rewards and season points the backend applied to one player, forwarded by the
+    /// dedicated server (FR-SHOP-08/09, FR-RANK-10/11). Clients only display it.
+    /// </summary>
+    [Serializable]
+    public sealed class MatchSettlementDto
+    {
+        public string matchId;
+
+        // MatchSettlementState.
+        public int state;
+        public string message;
+
+        // "win", "loss", "draw", "surrender_early" or "surrender".
+        public string result;
+        public int coins;
+        public int silver;
+
+        public bool ranked;
+        public int rankDelta;
+        public int pointsBefore;
+        public int pointsAfter;
+        public int tierBefore;
+        public int tierAfter;
+        public string notScoredReason;
     }
 
     [Serializable]

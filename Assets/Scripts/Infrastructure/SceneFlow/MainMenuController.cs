@@ -36,6 +36,16 @@ public sealed class MainMenuController : MonoBehaviour
         SceneManager.LoadScene(SceneNames.Shop);
     }
 
+    public void OpenLeaderboard()
+    {
+        if (!EnsureSignedIn())
+        {
+            return;
+        }
+
+        SceneManager.LoadScene(SceneNames.Leaderboard);
+    }
+
     public void Logout()
     {
         AuthManager.Instance?.SignOut();

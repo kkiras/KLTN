@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acfbde6df622d62418511848fcebe07e, type: 3}
+  m_Name: RankCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::KLTN.Game.Content.RankCatalog
+  entries:
+  - tier: 0
+    displayName: "\u0110\u1ED3ng"
+    icon: {fileID: -2244206578368165971, guid: da8f9e320897cd94b86b22b5f579787d, type: 3}
+  - tier: 1
+    displayName: "B\u1EA1c"
+    icon: {fileID: 5724921708042284031, guid: da8f9e320897cd94b86b22b5f579787d, type: 3}
+  - tier: 2
+    displayName: "V\xE0ng"
+    icon: {fileID: 2176513016414343422, guid: da8f9e320897cd94b86b22b5f579787d, type: 3}
+  - tier: 3
+    displayName: "B\u1EA1ch Kim"
+    icon: {fileID: -1103926563898574736, guid: da8f9e320897cd94b86b22b5f579787d, type: 3}
+  - tier: 4
+    displayName: "Kim C\u01B0\u01A1ng"
+    icon: {fileID: 5039775306853282622, guid: 75b3d5e8918931844a3d0ba2903519fb, type: 3}
+  - tier: 5
+    displayName: "Cao Th\u1EE7"
+    icon: {fileID: -6797245548303957417, guid: 75b3d5e8918931844a3d0ba2903519fb, type: 3}
+  - tier: 6
+    displayName: "Th\xE1ch \u0110\u1EA5u"
+    icon: {fileID: -903025240811116706, guid: 75b3d5e8918931844a3d0ba2903519fb, type: 3}

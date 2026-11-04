@@ -107,5 +107,33 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 503598437095499409, guid: efdbc14dc8e59084cb6aa5186e8227c4, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6978448642429837783}
   m_SourcePrefab: {fileID: 100100000, guid: efdbc14dc8e59084cb6aa5186e8227c4, type: 3}
+--- !u!1 &5278100387301228686 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 503598437095499409, guid: efdbc14dc8e59084cb6aa5186e8227c4, type: 3}
+  m_PrefabInstance: {fileID: 5747349907182052895}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6978448642429837783
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5278100387301228686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c70bc5f9c8d15948871361316162a8c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KLTN.Game.Presentation.CardLoreProfile
+  role: "\u0110\u1EA5u s\u0129"
+  skillDescription: "[Chi ti\u1EBFt k\u1EF9 n\u0103ng]\n- L\u1EA7n \u0111\u1EA7u
+    m\u1ED9t \u0111\u1ED3ng minh kh\xE1c ch\u1EBFt, ban ta +2/ +2."
+  folklore: "Ta l\xE0 ma lon \u2014 h\u1ED3n ma \u0111\u01B0\u1EE3c g\u1ECDi v\u1EC1
+    qua tr\xF2 ch\u01A1i \xFAp lon, bu\u1ED9c d\xE2y ho\u1EB7c c\u1EA7m v\u1EADt
+    d\u1EABn. Tr\u1EBB con truy\u1EC1n nhau h\u1ECFi ta chuy\u1EC7n t\u01B0\u01A1ng
+    lai, nh\u01B0ng ng\u01B0\u1EDDi l\u1EDBn lu\xF4n c\u1EA5m v\xEC s\u1EE3 g\u1ECDi
+    \u0111\u01B0\u1EE3c m\xE0 kh\xF4ng ti\u1EC5n \u0111i \u0111\u01B0\u1EE3c."

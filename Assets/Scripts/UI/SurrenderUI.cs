@@ -21,7 +21,7 @@ public class SurrenderUI : MonoBehaviour
 
     public void Surrender()
     {
-        NetworkMatchBridge bridge = FindFirstObjectByType<NetworkMatchBridge>();
+        NetworkMatchBridge bridge = FindAnyObjectByType<NetworkMatchBridge>();
         if (bridge != null)
         {
             bridge.RequestSurrender();

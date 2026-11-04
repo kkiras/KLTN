@@ -68,9 +68,13 @@ namespace KLTN.Game.Presentation
 
         public string InstanceId { get; private set; }
         public string DefinitionId { get; private set; }
+        public string DisplayName { get; private set; }
         public int Energy { get; private set; }
         public int SupportDamageBonus { get; private set; }
         public int SupportHealthBonus { get; private set; }
+        public int CurrentDamage => authoritativeDamage;
+        public int CurrentHealth => authoritativeHealth;
+        public CardArtworkView CurrentArtworkPrefab => currentArtworkPrefab;
         public bool IsOpponentCard { get; private set; }
         public RectTransform ArtworkMount => artworkMount;
         public RectTransform CardRect => transform as RectTransform;
@@ -83,6 +87,7 @@ namespace KLTN.Game.Presentation
         {
             InstanceId = dto.instanceId;
             DefinitionId = dto.definitionId;
+            DisplayName = dto.displayName;
             Energy = dto.energy;
             SupportDamageBonus = dto.supportDamageBonus;
             SupportHealthBonus = dto.supportHealthBonus;
@@ -119,6 +124,7 @@ namespace KLTN.Game.Presentation
         {
             InstanceId = null;
             DefinitionId = null;
+            DisplayName = null;
             Energy = 0;
             SupportDamageBonus = 0;
             SupportHealthBonus = 0;
@@ -292,6 +298,15 @@ namespace KLTN.Game.Presentation
 
         public void OnPointerClick(PointerEventData eventData)
         {
+            if (eventData.button == PointerEventData.InputButton.Right)
+            {
+                if (!string.IsNullOrWhiteSpace(DefinitionId))
+                {
+                    CardDetailModal.TryShow(this);
+                }
+                return;
+            }
+            
             if (
                 eventData.button != PointerEventData.InputButton.Left
                 || string.IsNullOrWhiteSpace(InstanceId)

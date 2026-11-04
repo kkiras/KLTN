@@ -1,0 +1,338 @@
+fileFormatVersion: 2
+guid: da8f9e320897cd94b86b22b5f579787d
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -2244206578368165971
+    second: Bronze to Plate_0
+  - first:
+      213: 5724921708042284031
+    second: Bronze to Plate_1
+  - first:
+      213: 2176513016414343422
+    second: Bronze to Plate_2
+  - first:
+      213: -1103926563898574736
+    second: Bronze to Plate_3
+  - first:
+      213: 2697793562325119903
+    second: Bronze to Plate_4
+  - first:
+      213: 5288787410400212104
+    second: Bronze to Plate_5
+  - first:
+      213: -5866734564388484121
+    second: Bronze to Plate_6
+  - first:
+      213: 8674244326347663187
+    second: Bronze to Plate_7
+  - first:
+      213: -3098645181451229209
+    second: Bronze to Plate_8
+  - first:
+      213: 6122255972059623121
+    second: Bronze to Plate_9
+  - first:
+      213: 3282137001185893553
+    second: Bronze to Plate_10
+  - first:
+      213: -6922500698894175533
+    second: Bronze to Plate_11
+  - first:
+      213: 5912118608667586355
+    second: Bronze to Plate_12
+  - first:
+      213: 7708831905285825069
+    second: Bronze to Plate_13
+  - first:
+      213: -3857345229662011301
+    second: Bronze to Plate_14
+  - first:
+      213: -5340449823470787395
+    second: Bronze to Plate_15
+  - first:
+      213: -974863508483386967
+    second: Bronze to Plate_16
+  - first:
+      213: -4435596912447238517
+    second: Bronze to Plate_17
+  - first:
+      213: 6252231904319413375
+    second: Bronze to Plate_18
+  - first:
+      213: 2168893817602138875
+    second: Bronze to Plate_19
+  - first:
+      213: 31731789329411156
+    second: Bronze to Plate_20
+  - first:
+      213: 20559245735050750
+    second: Bronze to Plate_21
+  - first:
+      213: -914413235688841217
+    second: Bronze to Plate_22
+  - first:
+      213: -4507450706169301085
+    second: Bronze to Plate_23
+  - first:
+      213: 8475372967801164863
+    second: Bronze to Plate_24
+  - first:
+      213: -7343618793941832179
+    second: Bronze to Plate_25
+  - first:
+      213: 2038433509107354584
+    second: Bronze to Plate_26
+  - first:
+      213: -3050471668936163495
+    second: Bronze to Plate_27
+  - first:
+      213: 2793381470021788491
+    second: Bronze to Plate_28
+  - first:
+      213: 2324645926271818156
+    second: Bronze to Plate_29
+  - first:
+      213: 5594835450551361200
+    second: Bronze to Plate_30
+  - first:
+      213: 7436045368908882558
+    second: Bronze to Plate_31
+  - first:
+      213: 5536159583068879393
+    second: Bronze to Plate_32
+  - first:
+      213: 3031533846518015423
+    second: Bronze to Plate_33
+  - first:
+      213: -366373842727119018
+    second: Bronze to Plate_34
+  - first:
+      213: -6812735818659041289
+    second: Bronze to Plate_35
+  - first:
+      213: -201976425618748887
+    second: Bronze to Plate_36
+  - first:
+      213: 2482731718124593203
+    second: Bronze to Plate_37
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Bronze to Plate_0
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 0
+        width: 420
+        height: 420
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da745cdd10afad0e0800000000000000
+      internalID: -2244206578368165971
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bronze to Plate_1
+      rect:
+        serializedVersion: 2
+        x: 429
+        y: 0
+        width: 420
+        height: 420
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ffb68c626f1037f40800000000000000
+      internalID: 5724921708042284031
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bronze to Plate_2
+      rect:
+        serializedVersion: 2
+        x: 834
+        y: 0
+        width: 420
+        height: 420
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef014688e07843e10800000000000000
+      internalID: 2176513016414343422
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bronze to Plate_3
+      rect:
+        serializedVersion: 2
+        x: 1227
+        y: 0
+        width: 420
+        height: 420
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ff57470423948564a9d89a33c92c4edb
+      internalID: -1103926563898574736
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 802ac3676e97e954499c47b8191986fd
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries:
+      - key: SpriteEditor.SliceSettings
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":4.0,"y":1.0},"gridSpriteSize":{"x":420.0,"y":420.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":1,"keepEmptyRects":false,"isAlternate":false}'
+    nameFileIdTable:
+      Bronze to Plate_0: -2244206578368165971
+      Bronze to Plate_1: 5724921708042284031
+      Bronze to Plate_2: 2176513016414343422
+      Bronze to Plate_3: -1103926563898574736
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -7,14 +7,18 @@ namespace KLTN.Infrastructure.Economy
     public sealed class PlayerProfile
     {
         public string UserId { get; }
+
+        /// <summary>Public unique name "userXXXXXX"; null only if claiming it failed.</summary>
+        public string Username { get; }
         public Wallet Wallet { get; }
         public IReadOnlyCollection<string> OwnedCardIds => owned;
 
         private readonly HashSet<string> owned;
 
-        public PlayerProfile(string userId, Wallet wallet, IEnumerable<string> ownedCardIds)
+        public PlayerProfile(string userId, string username, Wallet wallet, IEnumerable<string> ownedCardIds)
         {
             UserId = userId;
+            Username = username;
             Wallet = wallet;
             owned = new HashSet<string>(ownedCardIds ?? new string[0], System.StringComparer.Ordinal);
         }
@@ -58,13 +62,12 @@ namespace KLTN.Infrastructure.Economy
 
     /// <summary>
     /// Persistence boundary for currencies and owned cards.
-    /// Phase 1: FirestoreEconomyGateway (client writes, Security Rules validate).
-    /// Phase 2: a Cloud Code backed gateway can replace it without touching UI code.
+    /// Match rewards are written only by Cloud Code (ReportResult from the dedicated server);
+    /// the client can read the wallet but has no reward write path (FR-SHOP-09).
     /// </summary>
     public interface IEconomyGateway
     {
         Task<EconomyResult> LoadOrCreateProfileAsync(IReadOnlyList<string> starterCardIds);
         Task<EconomyResult> PurchaseAsync(ShopEntry entry);
-        Task<EconomyResult> ClaimMatchRewardAsync(string matchId, MatchReward reward);
     }
 }

@@ -1,11 +1,21 @@
+using KLTN.Audio;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(AudioSource))]
 public class MenuMusicManager : MonoBehaviour
 {
+    #region Configuration and Runtime State
+
     private static MenuMusicManager instance;
     private AudioSource musicSource;
+
+    // Âm lượng gốc đặt trong scene; slider Music nhân lên trên mức này.
+    private float baseVolume = 1f;
+
+    #endregion
+
+    #region Unity Lifecycle and Audio Commands
 
     private void Awake()
     {
@@ -21,6 +31,10 @@ public class MenuMusicManager : MonoBehaviour
         musicSource = GetComponent<AudioSource>();
         musicSource.loop = true;
 
+        AudioVolumeSettings.RepairLegacyMusicVolume();
+        baseVolume = musicSource.volume;
+        ApplyMusicVolume();
+        AudioVolumeSettings.Changed += ApplyMusicVolume;
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
@@ -38,7 +52,7 @@ public class MenuMusicManager : MonoBehaviour
         {
             musicSource.Stop();
         }
-        else if (scene.name == "MainMenu" ||
+        else if (scene.name == SceneNames.Login || scene.name == "MainMenu" ||
                  scene.name.StartsWith("HostClient"))
         {
             if (!musicSource.isPlaying)
@@ -48,12 +62,23 @@ public class MenuMusicManager : MonoBehaviour
         }
     }
 
+    private void ApplyMusicVolume()
+    {
+        if (musicSource != null)
+        {
+            musicSource.volume = baseVolume * AudioVolumeSettings.MusicVolume;
+            musicSource.mute = AudioVolumeSettings.MusicMuted;
+        }
+    }
+
     private void OnDestroy()
     {
         if (instance == this)
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            AudioVolumeSettings.Changed -= ApplyMusicVolume;
             instance = null;
         }
     }
+    #endregion
 }

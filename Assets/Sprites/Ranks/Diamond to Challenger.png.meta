@@ -1,0 +1,337 @@
+fileFormatVersion: 2
+guid: 75b3d5e8918931844a3d0ba2903519fb
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 5039775306853282622
+    second: Diamond to Challenger_0
+  - first:
+      213: 4794013856355728282
+    second: Diamond to Challenger_1
+  - first:
+      213: -6797245548303957417
+    second: Diamond to Challenger_2
+  - first:
+      213: -903025240811116706
+    second: Diamond to Challenger_3
+  - first:
+      213: 6879717728959087911
+    second: Diamond to Challenger_4
+  - first:
+      213: -5093117669317866649
+    second: Diamond to Challenger_5
+  - first:
+      213: 6458181776225312179
+    second: Diamond to Challenger_6
+  - first:
+      213: 8394220053031513573
+    second: Diamond to Challenger_7
+  - first:
+      213: 7987487629354730000
+    second: Diamond to Challenger_8
+  - first:
+      213: -4442816685220281065
+    second: Diamond to Challenger_9
+  - first:
+      213: 5025792014313164300
+    second: Diamond to Challenger_10
+  - first:
+      213: -596986542586681296
+    second: Diamond to Challenger_11
+  - first:
+      213: 2495271721933567121
+    second: Diamond to Challenger_12
+  - first:
+      213: -3669797987526572488
+    second: Diamond to Challenger_13
+  - first:
+      213: 6179735421881603923
+    second: Diamond to Challenger_14
+  - first:
+      213: 8830393981613415871
+    second: Diamond to Challenger_15
+  - first:
+      213: -1550828327546089120
+    second: Diamond to Challenger_16
+  - first:
+      213: -3536383323534140827
+    second: Diamond to Challenger_17
+  - first:
+      213: -8893488907434490715
+    second: Diamond to Challenger_18
+  - first:
+      213: -4974138777705222055
+    second: Diamond to Challenger_19
+  - first:
+      213: -8568360474904834642
+    second: Diamond to Challenger_20
+  - first:
+      213: 9039359686129077384
+    second: Diamond to Challenger_21
+  - first:
+      213: -5409139027307627107
+    second: Diamond to Challenger_22
+  - first:
+      213: 9173015311351912156
+    second: Diamond to Challenger_23
+  - first:
+      213: -4445867024489151262
+    second: Diamond to Challenger_24
+  - first:
+      213: 3988864943739445084
+    second: Diamond to Challenger_25
+  - first:
+      213: 8421292468043146177
+    second: Diamond to Challenger_26
+  - first:
+      213: 9159172930354711776
+    second: Diamond to Challenger_27
+  - first:
+      213: 7734619474699528980
+    second: Diamond to Challenger_28
+  - first:
+      213: -5118346579220487373
+    second: Diamond to Challenger_29
+  - first:
+      213: 7109947179869077284
+    second: Diamond to Challenger_30
+  - first:
+      213: 2177641510177015985
+    second: Diamond to Challenger_31
+  - first:
+      213: 831167751847465401
+    second: Diamond to Challenger_32
+  - first:
+      213: -1096454838296520000
+    second: Diamond to Challenger_33
+  - first:
+      213: -1725954374821957633
+    second: Diamond to Challenger_34
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Diamond to Challenger_0
+      rect:
+        serializedVersion: 2
+        x: 217
+        y: 11
+        width: 420
+        height: 420
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e3376c090f0e0f540800000000000000
+      internalID: 5039775306853282622
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Diamond to Challenger_2
+      rect:
+        serializedVersion: 2
+        x: 635
+        y: 18
+        width: 420
+        height: 415
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 752cc3aef255ba1a0800000000000000
+      internalID: -6797245548303957417
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Diamond to Challenger_3
+      rect:
+        serializedVersion: 2
+        x: 1094
+        y: 15
+        width: 420
+        height: 420
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e57ed32f35fc773f0800000000000000
+      internalID: -903025240811116706
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: f15eca673347177459322181ecad55e6
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Diamond to Challenger_0: 5039775306853282622
+      Diamond to Challenger_1: 4794013856355728282
+      Diamond to Challenger_10: 5025792014313164300
+      Diamond to Challenger_11: -596986542586681296
+      Diamond to Challenger_12: 2495271721933567121
+      Diamond to Challenger_13: -3669797987526572488
+      Diamond to Challenger_14: 6179735421881603923
+      Diamond to Challenger_15: 8830393981613415871
+      Diamond to Challenger_16: -1550828327546089120
+      Diamond to Challenger_17: -3536383323534140827
+      Diamond to Challenger_18: -8893488907434490715
+      Diamond to Challenger_19: -4974138777705222055
+      Diamond to Challenger_2: -6797245548303957417
+      Diamond to Challenger_20: -8568360474904834642
+      Diamond to Challenger_21: 9039359686129077384
+      Diamond to Challenger_22: -5409139027307627107
+      Diamond to Challenger_23: 9173015311351912156
+      Diamond to Challenger_24: -4445867024489151262
+      Diamond to Challenger_25: 3988864943739445084
+      Diamond to Challenger_26: 8421292468043146177
+      Diamond to Challenger_27: 9159172930354711776
+      Diamond to Challenger_28: 7734619474699528980
+      Diamond to Challenger_29: -5118346579220487373
+      Diamond to Challenger_3: -903025240811116706
+      Diamond to Challenger_30: 7109947179869077284
+      Diamond to Challenger_31: 2177641510177015985
+      Diamond to Challenger_32: 831167751847465401
+      Diamond to Challenger_33: -1096454838296520000
+      Diamond to Challenger_34: -1725954374821957633
+      Diamond to Challenger_35: -1546014422
+      Diamond to Challenger_4: 6879717728959087911
+      Diamond to Challenger_5: -5093117669317866649
+      Diamond to Challenger_6: 6458181776225312179
+      Diamond to Challenger_7: 8394220053031513573
+      Diamond to Challenger_8: 7987487629354730000
+      Diamond to Challenger_9: -4442816685220281065
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

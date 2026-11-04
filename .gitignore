@@ -3,6 +3,7 @@
 # Get latest from https://github.com/github/gitignore/blob/main/Unity.gitignore
 #
 .utmp/
+.agents/
 /[Ll]ibrary/
 /[Tt]emp/
 /[Oo]bj/
@@ -82,3 +83,8 @@ crashlytics-build.properties
 .env
 .env.*
 
+# Báo cáo/tệp tạm do Claude tạo
+Claude outputs/
+
+# Kết quả test tải (plan 05)
+Tools/LoadTest/results-*/

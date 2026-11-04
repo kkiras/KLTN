@@ -62,6 +62,40 @@ namespace KLTN.Infrastructure.Firestore
                 : fallback;
         }
 
+        /// <summary>Timestamp field as Unix milliseconds (UTC), or <paramref name="fallback"/>.</summary>
+        public static long GetTimestampMs(JObject document, string field, long fallback = 0)
+        {
+            JToken value = document?["fields"]?[field]?["timestampValue"];
+
+            if (value == null)
+            {
+                return fallback;
+            }
+
+            // Newtonsoft may already have converted the ISO string into a DateTime.
+            if (value.Type == JTokenType.Date)
+            {
+                return new DateTimeOffset(value.Value<DateTime>().ToUniversalTime()).ToUnixTimeMilliseconds();
+            }
+
+            return DateTimeOffset.TryParse(
+                value.ToString(),
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out DateTimeOffset parsed)
+                ? parsed.ToUnixTimeMilliseconds()
+                : fallback;
+        }
+
+        public static JObject TimestampFromMs(long unixMs)
+        {
+            return new JObject
+            {
+                ["timestampValue"] = DateTimeOffset.FromUnixTimeMilliseconds(unixMs)
+                    .UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture),
+            };
+        }
+
         public static string GetString(JObject document, string field)
         {
             return document?["fields"]?[field]?["stringValue"]?.ToString();

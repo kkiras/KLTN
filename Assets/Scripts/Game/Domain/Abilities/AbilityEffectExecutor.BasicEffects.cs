@@ -85,16 +85,22 @@ namespace KLTN.Game.Domain
         {
             if (effect.Target == EffectTarget.AlliedNexus)
             {
+                int healthBefore = state.Player(triggeredAbility.ListenerOwner).NexusHealth;
                 state.Player(triggeredAbility.ListenerOwner).HealNexus(effect.Amount);
+                RecordNexusEffect(state, triggeredAbility, EffectKind.Heal,
+                    triggeredAbility.ListenerOwner, healthBefore);
 
                 return;
             }
 
             if (effect.Target == EffectTarget.EnemyNexus)
             {
+                int healthBefore = state.Player(triggeredAbility.ListenerOwner.Opponent()).NexusHealth;
                 state
                     .Player(triggeredAbility.ListenerOwner.Opponent())
                     .HealNexus(effect.Amount);
+                RecordNexusEffect(state, triggeredAbility, EffectKind.Heal,
+                    triggeredAbility.ListenerOwner.Opponent(), healthBefore);
 
                 return;
             }

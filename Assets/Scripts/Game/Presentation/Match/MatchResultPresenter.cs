@@ -1,7 +1,5 @@
 using UnityEngine;
 using TMPro;
-using Unity.Netcode;
-using UnityEngine.SceneManagement;
 using KLTN.Game.Domain;
 using KLTN.Game.Networking;
 using KLTN.Game.Domain.Ranking;
@@ -325,14 +323,8 @@ public class MatchResultPresenter : MonoBehaviour
 
     #endregion
 
-    public void OnReturnButtonClicked()
+    public async void OnReturnButtonClicked()
     {
-        Debug.Log("Ngắt kết nối mạng và quay về Main Menu...");
-        MatchConnectionController.Forget();
-        if (NetworkManager.Singleton != null)
-        {
-            NetworkManager.Singleton.Shutdown();
-        }
-        SceneManager.LoadScene("MainMenu");
+        await MatchConnectionController.ReturnToMainMenuAsync();
     }
 }

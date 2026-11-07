@@ -282,6 +282,7 @@ namespace KLTN.Game.Networking
     [Serializable]
     public sealed class MatchUpdateDto
     {
+        public MatchLogDto[] logs;
         #region Authoritative Update
 
         public MatchSnapshotDto snapshot;

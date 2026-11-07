@@ -181,6 +181,7 @@ namespace KLTN.Game.Networking
                     ? null
                     : resolutionDtoMapper.Build(resolution, state);
 
+            var pendingLogs = state?.Journal.TakePending();
             AbilityResolution abilityResolution = state?.TakeAbilityResolution();
             var abilityMapper = new AbilityResolutionDtoMapper(definitionsById);
 
@@ -201,7 +202,8 @@ namespace KLTN.Game.Networking
                     pair.Value,
                     resolutionDto,
                     roundTransitionDto,
-                    abilityDto
+                    abilityDto,
+                    MatchJournalProjection.Build(pendingLogs, pair.Value)
                 );
             }
         }
@@ -212,7 +214,8 @@ namespace KLTN.Game.Networking
             SeatId viewerSeat,
             RoundResolutionDto resolution,
             RoundTransitionDto roundTransition = null,
-            AbilityResolutionDto abilityResolution = null
+            AbilityResolutionDto abilityResolution = null,
+            MatchLogDto[] logs = null
         )
         {
             bool isVisible = NetworkObject.IsNetworkVisibleTo(targetClientId);
@@ -231,6 +234,7 @@ namespace KLTN.Game.Networking
             var update = new MatchUpdateDto
             {
                 snapshot = BuildSnapshot(session, viewerSeat),
+                logs = logs ?? MatchJournalProjection.Build(session.State?.Journal.Entries, viewerSeat),
 
                 hasResolution = resolution != null,
 

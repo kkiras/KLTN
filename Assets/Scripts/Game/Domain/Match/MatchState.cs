@@ -18,6 +18,8 @@ namespace KLTN.Game.Domain
 
         #region Match State
 
+        public MatchJournal Journal { get; } = new MatchJournal();
+
         public PlayerState Host { get; } = new PlayerState(SeatId.Host);
         public PlayerState Guest { get; } = new PlayerState(SeatId.Guest);
 
@@ -69,6 +71,7 @@ namespace KLTN.Game.Domain
             }
 
             pendingAbilityResolutionEvents.Add(resolutionEvent);
+            Journal.Ability(RoundNumber, resolutionEvent, resolutionEvent.JournalContext, resolutionEvent.Duration);
         }
 
         /// <summary>Returns and clears the effects applied since the last publication.</summary>

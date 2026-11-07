@@ -121,6 +121,7 @@ namespace KLTN.Game.Networking
 
             runtimeByMatch.Clear();
             pendingSnapshotClients.Clear();
+            MatchSettlementRegistry.Reset();
             MatchProjectionRegistry.Current.Reset();
             MatchUpdateInboxRegistry.Current.Reset();
         }

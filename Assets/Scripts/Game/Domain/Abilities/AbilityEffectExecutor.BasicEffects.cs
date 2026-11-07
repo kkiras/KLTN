@@ -60,7 +60,7 @@ namespace KLTN.Game.Domain
                 )
             )
             {
-                AbilityCardState before = CaptureCard(target);
+                AbilityCardState before = CaptureCard(target, state);
                 target.ApplyDamage(effect.Amount);
 
                 if (before.Health != target.CurrentHealth)
@@ -70,7 +70,7 @@ namespace KLTN.Game.Domain
                         triggeredAbility,
                         EffectKind.Damage,
                         before,
-                        CaptureCard(target)
+                        CaptureCard(target, state)
                     );
                 }
             }
@@ -121,7 +121,10 @@ namespace KLTN.Game.Domain
                     )
                 )
                 {
+                    var before = CaptureCard(target, state);
                     target.Heal(definition, effect.Amount);
+                    if (before.Health != target.CurrentHealth)
+                        RecordJournalCard(state, triggeredAbility, effect.Kind, before, CaptureCard(target, state));
                 }
             }
         }
@@ -142,7 +145,7 @@ namespace KLTN.Game.Domain
                 )
             )
             {
-                AbilityCardState before = CaptureCard(target);
+                AbilityCardState before = CaptureCard(target, state);
                 target.Kill();
 
                 if (before.Health > 0)
@@ -152,15 +155,15 @@ namespace KLTN.Game.Domain
                         triggeredAbility,
                         effect.Kind,
                         before,
-                        CaptureCard(target)
+                        CaptureCard(target, state)
                     );
                 }
             }
         }
 
-        private static void ExecuteDraw(MatchState state, SeatId owner, int amount)
+        private void ExecuteDraw(MatchState state, TriggeredAbility triggeredAbility, int amount)
         {
-            PlayerState player = state.Player(owner);
+            PlayerState player = state.Player(triggeredAbility.ListenerOwner);
 
             for (int i = 0; i < Math.Max(0, amount); i++)
             {
@@ -168,6 +171,8 @@ namespace KLTN.Game.Domain
                 {
                     break;
                 }
+                RecordJournalCard(state, triggeredAbility, EffectKind.Draw, null,
+                    CaptureCard(player.DrawHand[player.DrawHand.Count - 1]));
             }
         }
 
@@ -197,12 +202,15 @@ namespace KLTN.Game.Domain
                     continue;
                 }
 
+                var before = CaptureCard(target, state);
                 target.ApplyBuff(
                     definition,
                     effect.Amount,
                     effect.SecondaryAmount,
                     effect.Duration
                 );
+                if (before.Damage != target.GetDamage(definition) || before.MaximumHealth != target.GetMaximumHealth(definition))
+                    RecordJournalCard(state, triggeredAbility, effect.Kind, before, CaptureCard(target, state), effect.Duration);
             }
         }
 
@@ -232,7 +240,10 @@ namespace KLTN.Game.Domain
                     continue;
                 }
 
+                var before = CaptureCard(target, state);
                 target.ApplyCostReduction(definition, effect.Amount, effect.Duration);
+                if (before.Cost != CardCostCalculator.GetEffectiveCost(state, target, definition))
+                    RecordJournalCard(state, triggeredAbility, effect.Kind, before, CaptureCard(target, state), effect.Duration);
             }
         }
 
@@ -262,7 +273,9 @@ namespace KLTN.Game.Domain
                     continue;
                 }
 
-                state.Player(target.Owner).TryReturnCardToDrawHand(target, definition);
+                var before = CaptureCard(target, state);
+                if (state.Player(target.Owner).TryReturnCardToDrawHand(target, definition))
+                    RecordJournalCard(state, triggeredAbility, effect.Kind, before, CaptureCard(target, state));
             }
         }
 
@@ -284,7 +297,9 @@ namespace KLTN.Game.Domain
             {
                 if (target.Zone == CardZone.Board)
                 {
-                    state.Player(target.Owner).TryMoveBoardCardToReserve(target);
+                    var before = CaptureCard(target, state);
+                    if (state.Player(target.Owner).TryMoveBoardCardToReserve(target))
+                        RecordJournalCard(state, triggeredAbility, effect.Kind, before, CaptureCard(target, state));
                 }
             }
         }
@@ -302,7 +317,7 @@ namespace KLTN.Game.Domain
 
             foreach (CardInstance target in targets)
             {
-                AbilityCardState before = CaptureCard(target);
+                AbilityCardState before = CaptureCard(target, state);
                 target.Kill();
 
                 if (before.Health > 0)
@@ -312,7 +327,7 @@ namespace KLTN.Game.Domain
                         triggeredAbility,
                         EffectKind.KillAllUnits,
                         before,
-                        CaptureCard(target)
+                        CaptureCard(target, state)
                     );
                 }
             }

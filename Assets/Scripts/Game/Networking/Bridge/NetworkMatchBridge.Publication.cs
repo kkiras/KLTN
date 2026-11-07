@@ -57,8 +57,7 @@ namespace KLTN.Game.Networking
 
                 // Dedicated matches are ranked when the backend reporter is configured; they
                 // report under the allocator's match ID so the backend finds matches/{matchId}.
-                // Listen-host (Host/Join) matches are private and never scored; the
-                // RankingSettings flag only marks them as ranked in the HUD for dev testing.
+                // Listen-host snapshots the Inspector switch once for both points and rewards.
                 bool ranked = MatchServerContext.IsDedicated
                     ? MatchServerContext.Reporter.IsRanked
                     : RankingSettings.Load().HostClientPointsEnabled;
@@ -69,6 +68,7 @@ namespace KLTN.Game.Networking
                     ranked,
                     DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                 );
+                BeginListenRegistration(session);
 
                 Debug.Log(
                     $"Match initialized. "

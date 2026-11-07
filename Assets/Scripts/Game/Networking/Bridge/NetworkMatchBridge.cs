@@ -60,6 +60,8 @@ namespace KLTN.Game.Networking
         public override void OnNetworkSpawn()
         {
             hasReceivedSnapshot = false;
+            joiningListenMatch = null;
+            listenLifetime = new System.Threading.CancellationTokenSource();
             MatchSettlementRegistry.Reset();
 
             if (IsServer)
@@ -102,6 +104,8 @@ namespace KLTN.Game.Networking
 
         public override void OnNetworkDespawn()
         {
+            listenLifetime?.Cancel();
+            listenLifetime?.Dispose();
             if (initialSnapshotCoroutine != null)
             {
                 StopCoroutine(initialSnapshotCoroutine);
@@ -139,6 +143,7 @@ namespace KLTN.Game.Networking
             public Coroutine GraceCoroutine;
             public Coroutine LoadoutTimeoutCoroutine;
             public bool LoadoutTimeoutElapsed;
+            public ListenRegistration Listen;
         }
 
         private MatchRuntime RuntimeOf(MatchSession session)

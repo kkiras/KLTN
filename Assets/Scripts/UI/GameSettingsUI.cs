@@ -26,6 +26,8 @@ public class GameSettingsUI : MonoBehaviour
     #endregion
 
     private Button saveButton;
+    private Button closeButton;
+    private AudioVolumeSettings.PreviewCheckpoint previewCheckpoint;
     private TMP_Text saveLabel;
     private TMP_Text saveStatus;
 
@@ -48,6 +50,7 @@ public class GameSettingsUI : MonoBehaviour
             if (button.name == "SurrenderButton") surrender = button;
         }
         if (close == null) return;
+        closeButton = close;
         saveButton = Instantiate(close, close.transform.parent, false);
         saveButton.name = "SaveAudioButton";
         saveButton.onClick = new Button.ButtonClickedEvent();
@@ -113,6 +116,10 @@ public class GameSettingsUI : MonoBehaviour
 
     public void OpenSettings()
     {
+        if (previewCheckpoint == null)
+        {
+            previewCheckpoint = AudioVolumeSettings.CapturePreview();
+        }
         Refresh();
         if (menuGroup != null)
         {
@@ -124,6 +131,9 @@ public class GameSettingsUI : MonoBehaviour
 
     public void CloseSettings()
     {
+        if (AudioVolumeSettings.IsSaving) return;
+        AudioVolumeSettings.RestorePreview(previewCheckpoint);
+        previewCheckpoint = null;
         settingsPanel.SetActive(false);
         if (menuGroup != null)
         {
@@ -156,6 +166,10 @@ public class GameSettingsUI : MonoBehaviour
 
     private void Refresh()
     {
+        if (closeButton != null)
+        {
+            closeButton.interactable = !AudioVolumeSettings.IsSaving;
+        }
         if (saveButton != null)
         {
             saveButton.interactable = AudioVolumeSettings.CanSave;

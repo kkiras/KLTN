@@ -31,6 +31,7 @@ public sealed class UgsSessionService
     #region Properties
 
     public bool HasSession => session != null;
+    public bool IsBusy => lifecycleGate.CurrentCount == 0;
     public bool IsHost => session != null && session.IsHost;
     public int PlayerCount => session?.PlayerCount ?? 0;
     public string SessionId => session?.Id ?? string.Empty;

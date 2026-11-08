@@ -30,6 +30,15 @@ namespace KLTN.Audio
         private static AudioPreferences saved = new AudioPreferences();
         private static string userId;
         private static int session;
+        private static int savedRevision;
+
+        /// <summary>Captures the opening state without exposing a mutable snapshot.</summary>
+        public sealed class PreviewCheckpoint
+        {
+            internal AudioPreferences value;
+            internal int generation;
+            internal int revision;
+        }
         public static bool IsSaving { get; private set; }
         public static string Status { get; private set; }
         public static bool HasChanges => !current.SameAs(saved);
@@ -100,6 +109,30 @@ namespace KLTN.Audio
             Changed?.Invoke();
         }
 
+        /// <summary>Starts a modal preview, preserving any earlier quick-mute changes.</summary>
+        public static PreviewCheckpoint CapturePreview()
+        {
+            return new PreviewCheckpoint
+            {
+                value = current.Copy(), generation = session, revision = savedRevision,
+            };
+        }
+
+        /// <summary>
+        /// Cancels modal edits back to opening state, or the latest successful save.
+        /// Ignores checkpoints from another login session; never cancels an in-flight write.
+        /// </summary>
+        public static void RestorePreview(PreviewCheckpoint checkpoint)
+        {
+            if (checkpoint == null || checkpoint.generation != session || IsSaving)
+            {
+                return;
+            }
+            current = checkpoint.revision == savedRevision
+                ? checkpoint.value.Copy() : saved.Copy();
+            NotifyPreview();
+        }
+
         /// <summary>Saves a captured snapshot; late replies never change another account.</summary>
         public static async Task SaveAsync()
         {
@@ -115,6 +148,7 @@ namespace KLTN.Audio
                 await new FirestoreAudioPreferencesGateway().SaveAsync(uid, snapshot);
                 if (generation != session) return;
                 saved = snapshot;
+                savedRevision++;
                 WriteCache(uid, saved);
                 Status = "Đã lưu.";
             }

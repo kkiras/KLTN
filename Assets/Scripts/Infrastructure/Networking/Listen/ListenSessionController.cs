@@ -169,6 +169,22 @@ public sealed class ListenSessionController : MonoBehaviour
         }
 
         leaving = true;
+        NetworkManager networkManager = NetworkManager.Singleton;
+        bool needsCleanup = connecting
+            || loadingGameScene
+            || UgsSessionService.Instance.HasSession
+            || UgsSessionService.Instance.IsBusy
+            || MatchConnectionController.IsLeaving
+            || (networkManager != null && (networkManager.IsListening || networkManager.ShutdownInProgress));
+
+        // Back from an idle menu is navigation, not leaving a room.
+        if (!needsCleanup)
+        {
+            MatchConnectionController.Forget();
+            SceneManager.LoadScene(SceneNames.MainMenu);
+            return;
+        }
+
         SetStatus("Đang rời phòng...");
         bool completed = await MatchConnectionController.ReturnToMainMenuAsync();
         if (this != null && !completed)

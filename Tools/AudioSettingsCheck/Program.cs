@@ -81,6 +81,43 @@ class Program
         loading.SetResult(new AudioPreferences { music = 10 });
         Check(!await oldLoad && AudioVolumeSettings.MusicVolume == .75f,
             "Late load cannot replace B or trigger stale scene navigation");
+        await AudioVolumeSettings.LoadAccountAsync("Preview");
+        var checkpoint = AudioVolumeSettings.CapturePreview();
+        int writesBefore = FirestoreAudioPreferencesGateway.Writes;
+        AudioVolumeSettings.SetMusicVolume(.2f);
+        AudioVolumeSettings.SetUiSoundMuted(true);
+        AudioVolumeSettings.SetSfxVolume(0);
+        AudioVolumeSettings.RestorePreview(checkpoint);
+        Check(AudioVolumeSettings.MusicVolume == .75f
+            && AudioVolumeSettings.SfxVolume == .75f
+            && !AudioVolumeSettings.UiSoundMuted && !AudioVolumeSettings.HasChanges
+            && FirestoreAudioPreferencesGateway.Writes == writesBefore,
+            "Close restores all opening levels and mute without cloud writes");
+        AudioVolumeSettings.SetMusicMuted(true);
+        checkpoint = AudioVolumeSettings.CapturePreview();
+        AudioVolumeSettings.SetMusicVolume(.4f);
+        AudioVolumeSettings.RestorePreview(checkpoint);
+        Check(AudioVolumeSettings.MusicMuted && AudioVolumeSettings.HasChanges,
+            "Close preserves quick mute from before opening");
+        checkpoint = AudioVolumeSettings.CapturePreview();
+        AudioVolumeSettings.SetMusicVolume(.6f);
+        await AudioVolumeSettings.SaveAsync();
+        AudioVolumeSettings.SetMusicVolume(.3f);
+        AudioVolumeSettings.RestorePreview(checkpoint);
+        Check(AudioVolumeSettings.MusicVolume == .6f && !AudioVolumeSettings.HasChanges,
+            "Close after save discards only edits after the successful save");
+        checkpoint = AudioVolumeSettings.CapturePreview();
+        AudioVolumeSettings.SetMusicVolume(.1f);
+        FirestoreAudioPreferencesGateway.Fail = true;
+        await AudioVolumeSettings.SaveAsync();
+        FirestoreAudioPreferencesGateway.Fail = false;
+        AudioVolumeSettings.RestorePreview(checkpoint);
+        Check(AudioVolumeSettings.MusicVolume == .6f && !AudioVolumeSettings.HasChanges,
+            "Close after failed save restores opening state");
+        await AudioVolumeSettings.LoadAccountAsync("B");
+        AudioVolumeSettings.RestorePreview(checkpoint);
+        Check(AudioVolumeSettings.MusicVolume == .75f,
+            "Old modal checkpoint cannot affect another account");
         Console.WriteLine($"{checks} checks passed");
     }
 }

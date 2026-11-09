@@ -47,6 +47,7 @@ namespace KLTN.Game.Domain
 
         /// <summary>Seat that surrendered, or null when the match did not end by surrender.</summary>
         public SeatId? SurrenderedSeat { get; set; }
+        public SeatId? TimedOutSeat { get; internal set; }
         private ulong nextAbilitySelectionRequestId = 1;
         private ulong nextGeneratedCardInstanceId = 1;
         private long nextAbilityResolutionSequence = 1;

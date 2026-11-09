@@ -291,6 +291,7 @@ namespace KLTN.Game.Networking
             }
 
             ApplyConnectionState(session, snapshot, viewerSeat);
+            snapshot.turnClock = BuildTurnClock(session, viewerSeat);
             return snapshot;
         }
 
@@ -311,6 +312,7 @@ namespace KLTN.Game.Networking
             }
 
             hasReceivedSnapshot = true;
+            MatchTurnClockRegistry.Apply(update.snapshot.turnClock, acknowledgesSubmission: true);
             MatchUpdateInboxRegistry.Current.Enqueue(update);
 
             Debug.Log(

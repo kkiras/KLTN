@@ -60,6 +60,7 @@ namespace KLTN.Game.Networking
         public override void OnNetworkSpawn()
         {
             hasReceivedSnapshot = false;
+            MatchTurnClockRegistry.Reset();
             joiningListenMatch = null;
             listenLifetime = new System.Threading.CancellationTokenSource();
             MatchSettlementRegistry.Reset();
@@ -127,6 +128,7 @@ namespace KLTN.Game.Networking
             pendingSnapshotClients.Clear();
             MatchSettlementRegistry.Reset();
             MatchProjectionRegistry.Current.Reset();
+            MatchTurnClockRegistry.Reset();
             MatchUpdateInboxRegistry.Current.Reset();
         }
 

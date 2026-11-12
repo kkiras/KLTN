@@ -99,6 +99,40 @@ public class MulliganPresenter : MonoBehaviour
             return;
         }
 
+        if (
+            !hasConfirmed
+            && snapshot.roundNumber == 0
+            && !string.IsNullOrEmpty(snapshot.matchId)
+            && snapshot.turnClock != null
+            && snapshot.turnClock.self == null
+        )
+        {
+            hasConfirmed = true;
+            hasSpawnedNewCards = true;
+            isReturningToDeck = false;
+
+            if (cardsContainer != null)
+            {
+                foreach (Transform child in cardsContainer)
+                {
+                    MulliganCardToggle toggle = child.GetComponent<MulliganCardToggle>();
+                    if (toggle != null)
+                    {
+                        toggle.LockAndClearOverlay();
+                        Destroy(toggle);
+                    }
+                }
+            }
+
+            if (actionButtonText != null) actionButtonText.text = "ĐANG CHỜ...";
+            if (actionButton != null)
+            {
+                actionButton.onClick.RemoveListener(OnConfirmClicked);
+                actionButton.interactable = false;
+            }
+            return;
+        }
+
         if (snapshot.roundNumber == 0 && !hasConfirmed)
         {
             if (snapshot.self?.hand == null || snapshot.self.hand.Length == 0)

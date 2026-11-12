@@ -14,21 +14,25 @@ namespace KLTN.Game.Networking
     {
         #region Server Command Pipeline
 
+        private float firstPlayerSwapReadyTime;
+
         // Every command is routed by MatchCommandService from the sender's connection to its own
         // match (seat, started, not paused, growing command ID) before the rules engine runs.
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         private void SubmitSummonUnitRpc(
             ulong commandId,
+            ulong decisionId,
             ulong cardInstanceId,
             RpcParams rpcParams = default
         )
         {
             ulong senderClientId = rpcParams.Receive.SenderClientId;
 
-            MatchCommandOutcome outcome = commandService.Execute(
+            MatchCommandOutcome outcome = ExecuteTimedCommand(
                 senderClientId,
                 commandId,
+                decisionId,
                 (session, actor) => session.Rules.TrySummonUnit(session.State, actor, cardInstanceId)
             );
 
@@ -38,15 +42,17 @@ namespace KLTN.Game.Networking
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         private void SubmitDeclareAttackRpc(
             ulong commandId,
+            ulong decisionId,
             ulong[] attackerIdsBySlot,
             RpcParams rpcParams = default
         )
         {
             ulong senderClientId = rpcParams.Receive.SenderClientId;
 
-            MatchCommandOutcome outcome = commandService.Execute(
+            MatchCommandOutcome outcome = ExecuteTimedCommand(
                 senderClientId,
                 commandId,
+                decisionId,
                 (session, actor) => session.Rules.TryDeclareAttack(session.State, actor, attackerIdsBySlot)
             );
 
@@ -56,15 +62,17 @@ namespace KLTN.Game.Networking
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         private void SubmitDeclareBlockRpc(
             ulong commandId,
+            ulong decisionId,
             ulong[] blockerIdsBySlot,
             RpcParams rpcParams = default
         )
         {
             ulong senderClientId = rpcParams.Receive.SenderClientId;
 
-            MatchCommandOutcome outcome = commandService.Execute(
+            MatchCommandOutcome outcome = ExecuteTimedCommand(
                 senderClientId,
                 commandId,
+                decisionId,
                 (session, actor) => session.Rules.TryDeclareBlock(session.State, actor, blockerIdsBySlot)
             );
 
@@ -74,6 +82,7 @@ namespace KLTN.Game.Networking
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         private void SubmitAbilitySelectionRpc(
             ulong commandId,
+            ulong decisionId,
             ulong requestId,
             ulong[] primaryTargetIds,
             ulong[] secondaryTargetIds,
@@ -87,9 +96,10 @@ namespace KLTN.Game.Networking
                 secondaryTargetIds
             );
 
-            MatchCommandOutcome outcome = commandService.Execute(
+            MatchCommandOutcome outcome = ExecuteTimedCommand(
                 senderClientId,
                 commandId,
+                decisionId,
                 (session, actor) => session.Rules.TrySubmitAbilitySelection(
                     session.State,
                     actor,
@@ -104,29 +114,33 @@ namespace KLTN.Game.Networking
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         private void SubmitCancelAbilitySelectionRpc(
             ulong commandId,
+            ulong decisionId,
             ulong requestId,
             RpcParams rpcParams = default
         )
         {
             ulong senderClientId = rpcParams.Receive.SenderClientId;
 
-            MatchCommandOutcome outcome = commandService.Execute(
+            MatchCommandOutcome outcome = ExecuteTimedCommand(
                 senderClientId,
                 commandId,
-                (session, actor) => session.Rules.TryCancelAbilitySelection(session.State, actor, requestId)
+                decisionId,
+                (session, actor) => session.Rules.TryCancelAbilitySelection(session.State, actor, requestId),
+                completesDecision: false
             );
 
             FinishCommand(senderClientId, outcome);
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        private void SubmitPassRpc(ulong commandId, RpcParams rpcParams = default)
+        private void SubmitPassRpc(ulong commandId, ulong decisionId, RpcParams rpcParams = default)
         {
             ulong senderClientId = rpcParams.Receive.SenderClientId;
 
-            MatchCommandOutcome outcome = commandService.Execute(
+            MatchCommandOutcome outcome = ExecuteTimedCommand(
                 senderClientId,
                 commandId,
+                decisionId,
                 (session, actor) => session.Rules.TryPass(session.State, actor)
             );
 
@@ -150,20 +164,20 @@ namespace KLTN.Game.Networking
             FinishCommand(senderClientId, outcome);
         }
 
-        private float firstPlayerSwapReadyTime;
-
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         private void SubmitMulliganRpc(
             ulong commandId,
+            ulong decisionId,
             ulong[] cardIdsToReplace,
             RpcParams rpcParams = default
         )
         {
             ulong senderClientId = rpcParams.Receive.SenderClientId;
 
-            MatchCommandOutcome outcome = commandService.Execute(
+            MatchCommandOutcome outcome = ExecuteTimedCommand(
                 senderClientId,
                 commandId,
+                decisionId,
                 (session, actor) => ApplyMulligan(session.State, actor, cardIdsToReplace)
             );
 
@@ -203,29 +217,30 @@ namespace KLTN.Game.Networking
             }
         }
 
-        private static CommandResult ApplyMulligan(MatchState matchState, SeatId actor, ulong[] cardIdsToReplace)
+        private static CommandResult ApplyMulligan(MatchState state, SeatId actor, ulong[] cardIdsToReplace)
         {
-            bool alreadyDone = actor == SeatId.Host
-                ? matchState.HostMulliganDone
-                : matchState.GuestMulliganDone;
+            if (state == null) return CommandResult.Reject(CommandRejectionReason.MatchNotReady);
+            if (state.IsFinished) return CommandResult.Reject(CommandRejectionReason.MatchFinished);
+            if (actor != SeatId.Host && actor != SeatId.Guest)
+                return CommandResult.Reject(CommandRejectionReason.InvalidSeat);
+            if (state.Phase != MatchPhase.Mulligan || state.RoundNumber != 0
+                || (actor == SeatId.Host ? state.HostMulliganDone : state.GuestMulliganDone))
+                return CommandResult.Reject(CommandRejectionReason.InvalidPhase);
 
-            if (alreadyDone)
+            var unique = new HashSet<ulong>();
+            PlayerState player = state.Player(actor);
+            foreach (ulong id in cardIdsToReplace ?? Array.Empty<ulong>())
             {
-                return CommandResult.Success();
+                if (!unique.Add(id) || !player.DrawHand.Exists(card => card.InstanceId == id))
+                    return CommandResult.Reject(CommandRejectionReason.CardNotInHand);
             }
 
-            PlayerState player = matchState.Player(actor);
-
-            if (cardIdsToReplace != null && cardIdsToReplace.Length > 0)
-            {
-                System.Random rng = new System.Random();
-                player.PerformMulligan(cardIdsToReplace, rng);
-            }
+            player.PerformMulligan(cardIdsToReplace, new System.Random());
 
             if (actor == SeatId.Host)
-                matchState.HostMulliganDone = true;
+                state.HostMulliganDone = true;
             else
-                matchState.GuestMulliganDone = true;
+                state.GuestMulliganDone = true;
 
             return CommandResult.Success();
         }
@@ -300,6 +315,8 @@ namespace KLTN.Game.Networking
         )
         {
             var reason = (CommandRejectionReason)reasonValue;
+
+            MatchTurnClockRegistry.ClearSubmission();
 
             MatchProjectionRegistry.Current.Reject(reason);
             Debug.LogWarning($"Match command rejected: {reason}.");

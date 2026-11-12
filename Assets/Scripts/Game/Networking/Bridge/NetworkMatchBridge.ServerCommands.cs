@@ -150,6 +150,8 @@ namespace KLTN.Game.Networking
             FinishCommand(senderClientId, outcome);
         }
 
+        private float firstPlayerSwapReadyTime;
+
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         private void SubmitMulliganRpc(
             ulong commandId,
@@ -166,10 +168,52 @@ namespace KLTN.Game.Networking
             );
 
             FinishCommand(senderClientId, outcome);
+
+            if (!outcome.Accepted || outcome.Session == null || outcome.Session.State.RoundNumber != 0)
+            {
+                return;
+            }
+
+            int replaceCount = cardIdsToReplace != null ? cardIdsToReplace.Length : 0;
+            float currentPlayerSwapDuration = CalculateSwapAnimationDuration(replaceCount);
+
+            if (!outcome.Session.State.IsMulliganPhaseComplete)
+            {
+                firstPlayerSwapReadyTime = Time.time + currentPlayerSwapDuration;
+            }
+            else
+            {
+                float remainingFirstPlayerSwap = Mathf.Max(0f, firstPlayerSwapReadyTime - Time.time);
+                float effectiveSwapDuration = Mathf.Max(currentPlayerSwapDuration, remainingFirstPlayerSwap);
+
+                NotifyBothMulliganConfirmedRpc(effectiveSwapDuration);
+
+                float totalDelayBeforeRound1 = effectiveSwapDuration + 1.5f + 0.65f + 0.25f;
+                StartCoroutine(BeginFirstRoundAfterMulliganDelayCoroutine(outcome.Session, totalDelayBeforeRound1));
+            }
+        }
+
+        [Rpc(SendTo.ClientsAndHost, InvokePermission = RpcInvokePermission.Server)]
+        private void NotifyBothMulliganConfirmedRpc(float swapWaitDuration)
+        {
+            MulliganPresenter presenter = FindAnyObjectByType<MulliganPresenter>(FindObjectsInactive.Include);
+            if (presenter != null)
+            {
+                presenter.NotifyBothPlayersConfirmed(swapWaitDuration);
+            }
         }
 
         private static CommandResult ApplyMulligan(MatchState matchState, SeatId actor, ulong[] cardIdsToReplace)
         {
+            bool alreadyDone = actor == SeatId.Host
+                ? matchState.HostMulliganDone
+                : matchState.GuestMulliganDone;
+
+            if (alreadyDone)
+            {
+                return CommandResult.Success();
+            }
+
             PlayerState player = matchState.Player(actor);
 
             if (cardIdsToReplace != null && cardIdsToReplace.Length > 0)
@@ -183,14 +227,33 @@ namespace KLTN.Game.Networking
             else
                 matchState.GuestMulliganDone = true;
 
-            if (matchState.IsMulliganPhaseComplete && matchState.RoundNumber == 0)
-            {
-                matchState.BeginFirstRound();
+            return CommandResult.Success();
+        }
 
-                matchState.LastEvent = "Giai đoạn đổi bài kết thúc. Trận đấu bắt đầu!";
+        private static float CalculateSwapAnimationDuration(int replaceCount)
+        {
+            if (replaceCount <= 0) return 0f;
+
+            float returnTime = 0.45f + (replaceCount - 1) * 0.15f;
+            float flyInTime = 0.5f + (replaceCount - 1) * 0.2f;
+            return returnTime + flyInTime;
+        }
+
+        private IEnumerator BeginFirstRoundAfterMulliganDelayCoroutine(MatchSession session, float delaySeconds)
+        {
+            yield return new WaitForSeconds(delaySeconds);
+
+            if (!IsServer || session == null || session.State == null)
+            {
+                yield break;
             }
 
-            return CommandResult.Success();
+            if (session.State.IsMulliganPhaseComplete && session.State.RoundNumber == 0)
+            {
+                session.State.BeginFirstRound();
+                session.State.LastEvent = "Giai đoạn đổi bài kết thúc. Trận đấu bắt đầu!";
+                BroadcastUpdate(session);
+            }
         }
 
         private void FinishCommand(ulong senderClientId, MatchCommandOutcome outcome)

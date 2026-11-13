@@ -503,10 +503,10 @@ RectTransform:
   - {fileID: 1024887784}
   m_Father: {fileID: 789479150}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
+  m_SizeDelta: {x: -1820, y: -980}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &45090813
 MonoBehaviour:
@@ -546,6 +546,8 @@ MonoBehaviour:
   presentationCatalog: {fileID: 11400000, guid: fe3b600fb29f4474d8e8da0ba44a7d4e, type: 2}
   darkBackDrop: {fileID: 1624191600}
   topicGroup: {fileID: 1489694460}
+  myTurnText: {fileID: 382596846}
+  topBar: {fileID: 421680248}
   actionButton: {fileID: 649630904}
   actionButtonText: {fileID: 887562054}
 --- !u!223 &45090815

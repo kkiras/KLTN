@@ -24,6 +24,8 @@ public class MulliganPresenter : MonoBehaviour
     [Header("Mulligan UI Elements")]
     [SerializeField] private GameObject darkBackDrop;
     [SerializeField] private GameObject topicGroup;
+    [SerializeField] private TextMeshProUGUI myTurnText;
+    [SerializeField] private GameObject topBar;
 
     [Header("Action Button Override")]
     [SerializeField] private Button actionButton;
@@ -94,9 +96,16 @@ public class MulliganPresenter : MonoBehaviour
         if (snapshot.opponent == null)
         {
             SetRealHandVisibility(true);
+            SetTopBarVisibility(true);
             gameObject.SetActive(false);
             ClearViews();
             return;
+        }
+
+        if (snapshot.roundNumber == 0)
+        {
+            SetTopBarVisibility(false);
+            UpdateTurnOrderText(snapshot);
         }
 
         if (
@@ -145,6 +154,7 @@ public class MulliganPresenter : MonoBehaviour
             hasMovedToHand = false;
             gameObject.SetActive(true);
             SetRealHandVisibility(false);
+            SetTopBarVisibility(false);
 
             if (actionButtonText != null)
             {
@@ -185,6 +195,7 @@ public class MulliganPresenter : MonoBehaviour
             if (hasMovedToHand && !isTransitioningToMatch)
             {
                 SetRealHandVisibility(true);
+                SetTopBarVisibility(true);
                 if (gameObject.activeInHierarchy) gameObject.SetActive(false);
                 ClearViews();
             }
@@ -195,9 +206,20 @@ public class MulliganPresenter : MonoBehaviour
             else if (!isTransitioningToMatch && !gameObject.activeInHierarchy)
             {
                 SetRealHandVisibility(true);
+                SetTopBarVisibility(true);
                 ClearViews();
             }
         }
+    }
+
+    private void UpdateTurnOrderText(MatchSnapshotDto snapshot)
+    {
+        if (myTurnText == null || snapshot == null) return;
+
+        int localSeat = snapshot.self != null ? snapshot.self.seat : snapshot.viewerSeat;
+        bool isGoingFirst = snapshot.firstSeat == localSeat;
+
+        myTurnText.text = isGoingFirst ? "Lượt của bạn" : "Lượt của đối thủ";
     }
 
     public void NotifyBothPlayersConfirmed(float swapWaitDuration)
@@ -631,6 +653,14 @@ public class MulliganPresenter : MonoBehaviour
         ApplyHandCardsAlpha(visible);
     }
 
+    private void SetTopBarVisibility(bool visible)
+    {
+        if (topBar != null && topBar.activeSelf != visible)
+        {
+            topBar.SetActive(visible);
+        }
+    }
+
     private void ApplyHandCardsAlpha(bool visible)
     {
         if (handContainer == null) return;
@@ -710,6 +740,10 @@ public class MulliganPresenter : MonoBehaviour
         keptCardIds.Clear();
         replacedSlotPositions.Clear();
         savedHandCardStates.Clear();
+        if (myTurnText != null)
+        {
+            myTurnText.text = string.Empty;
+        }
     }
 
     #endregion
